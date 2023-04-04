@@ -22,6 +22,10 @@ contract ERC20StakingPool is Ownable {
     uint256 private _totalStaked;
     uint256 private _totalRewards;
 
+    uint256 private updatedAt;
+    uint256 private finishAt;
+    uint256 private rewardRate;
+
     struct StakeData {
         uint256 amount;
         uint256 rewardsPerTokenPaid;
@@ -62,8 +66,8 @@ contract ERC20StakingPool is Ownable {
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
         _claimPendingRewards(stakeData);
+        _increaseTotalStaked(amount);
 
-        _totalStaked += amount;
         stakeData.amount += amount;
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -77,8 +81,8 @@ contract ERC20StakingPool is Ownable {
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
         _claimPendingRewards(stakeData);
+        _decreaseTotalStaked(amount);
 
-        _totalStaked -= amount;
         stakeData.amount -= amount;
         stakingToken.safeTransfer(msg.sender, amount);
 
@@ -95,18 +99,30 @@ contract ERC20StakingPool is Ownable {
         assert(rewardsToken.balanceOf(address(this)) >= _totalRewards);
     }
 
-    function addRewards(uint256 amount) external onlyOwner {
+    function addRewards(uint256 amount, uint256 duration) external onlyOwner {
         require(amount > 0, "cannot distribute zero");
-        require(_totalStaked > 0, "no token to reward");
+        require(duration > 0, "duration must be at least 1s");
 
         _totalRewards += amount;
 
-        rewardsPerToken += (amount * rewardsScale * precision) / (_totalStaked * stakingScale);
-
         rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
+
+        finishAt = block.timestamp + duration;
+        updatedAt = block.timestamp;
+        rewardRate = (amount * rewardsScale) / duration;
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
         assert(rewardsToken.balanceOf(address(this)) >= _totalRewards);
+    }
+
+    function _currentRewardsPerToken() internal view returns (uint256) {
+        if (_totalStaked == 0) {
+            return rewardsPerToken;
+        }
+
+        uint256 delta = (block.timestamp < finishAt ? block.timestamp : finishAt) - updatedAt;
+
+        return rewardsPerToken + (delta * rewardRate * precision) / (_totalStaked * stakingScale);
     }
 
     function _computePendingRewards(StakeData memory stakeData) internal view returns (uint256) {
@@ -114,9 +130,19 @@ contract ERC20StakingPool is Ownable {
             return 0;
         }
 
-        uint256 delta = rewardsPerToken - stakeData.rewardsPerTokenPaid;
+        uint256 delta = _currentRewardsPerToken() - stakeData.rewardsPerTokenPaid;
 
         return (delta * stakeData.amount * stakingScale) / (rewardsScale * precision);
+    }
+
+    function _increaseTotalStaked(uint256 amount) internal {
+        _totalStaked += amount;
+        rewardsPerToken = _currentRewardsPerToken();
+    }
+
+    function _decreaseTotalStaked(uint256 amount) internal {
+        _totalStaked -= amount;
+        rewardsPerToken = _currentRewardsPerToken();
     }
 
     function _claimPendingRewards(StakeData storage stakeData) internal {

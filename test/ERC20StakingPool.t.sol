@@ -91,7 +91,9 @@ contract ERC20StakingPoolTest is Test {
 
         rewardsToken.approve(address(poolContract), 1000);
 
-        poolContract.addRewards(1000);
+        poolContract.addRewards(1000, 1);
+
+        vm.warp(block.timestamp + 1);
 
         assertEq(poolContract.pendingRewards(holder1), 300);
         assertEq(poolContract.pendingRewards(holder2), 700);
