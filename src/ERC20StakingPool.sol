@@ -8,8 +8,8 @@ import {SafeERC20} from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"
 contract ERC20StakingPool is Ownable {
     using SafeERC20 for IERC20Metadata;
 
-    IERC20Metadata public stakingToken;
-    IERC20Metadata public rewardsToken;
+    IERC20Metadata private immutable stakingToken;
+    IERC20Metadata private immutable rewardsToken;
 
     uint256 private rewardsPerToken;
 
@@ -22,8 +22,8 @@ contract ERC20StakingPool is Ownable {
     uint256 private _totalStaked;
     uint256 private _totalRewards;
 
-    uint256 private updatedAt;
-    uint256 private finishAt;
+    uint256 private lastDistributionTimestamp;
+    uint256 private endOfEmissionTimestamp;
     uint256 private rewardRate;
 
     struct StakeData {
@@ -107,12 +107,21 @@ contract ERC20StakingPool is Ownable {
 
         rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        finishAt = block.timestamp + duration;
-        updatedAt = block.timestamp;
-        rewardRate = (amount * rewardsScale) / duration;
+        rewardRate = (amount * precision) / duration;
+        endOfEmissionTimestamp = block.timestamp + duration;
+        lastDistributionTimestamp = block.timestamp;
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
         assert(rewardsToken.balanceOf(address(this)) >= _totalRewards);
+    }
+
+    function _secondsSinceLastDistribution() internal view returns (uint256) {
+        return (block.timestamp < endOfEmissionTimestamp ? block.timestamp : endOfEmissionTimestamp)
+            - lastDistributionTimestamp;
+    }
+
+    function _currentTotalRewards() internal view returns (uint256) {
+        return (_secondsSinceLastDistribution() * rewardRate) / precision;
     }
 
     function _currentRewardsPerToken() internal view returns (uint256) {
@@ -120,9 +129,9 @@ contract ERC20StakingPool is Ownable {
             return rewardsPerToken;
         }
 
-        uint256 delta = (block.timestamp < finishAt ? block.timestamp : finishAt) - updatedAt;
+        uint256 totalRewards = _currentTotalRewards();
 
-        return rewardsPerToken + (delta * rewardRate * precision) / (_totalStaked * stakingScale);
+        return rewardsPerToken + (totalRewards * rewardsScale * precision) / (_totalStaked * stakingScale);
     }
 
     function _computePendingRewards(StakeData memory stakeData) internal view returns (uint256) {
@@ -130,9 +139,9 @@ contract ERC20StakingPool is Ownable {
             return 0;
         }
 
-        uint256 delta = _currentRewardsPerToken() - stakeData.rewardsPerTokenPaid;
+        uint256 unclaimedRewardsPerToken = _currentRewardsPerToken() - stakeData.rewardsPerTokenPaid;
 
-        return (delta * stakeData.amount * stakingScale) / (rewardsScale * precision);
+        return (unclaimedRewardsPerToken * stakeData.amount * stakingScale) / (rewardsScale * precision);
     }
 
     function _increaseTotalStaked(uint256 amount) internal {
