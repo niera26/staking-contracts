@@ -79,6 +79,13 @@ contract ERC20StakingPool is Ownable {
     }
 
     /**
+     * Number of rewards yet to be distributed.
+     */
+    function remainingRewards() external view returns (uint256) {
+        return _currentRemainingRewards();
+    }
+
+    /**
      * Staked amount of the given holder.
      */
     function staked(address addr) external view returns (uint256) {
