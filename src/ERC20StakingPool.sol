@@ -2,14 +2,16 @@
 pragma solidity ^0.8.17;
 
 import {Ownable} from "openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "openzeppelin/contracts/interfaces/IERC20.sol";
 import {IERC20Metadata} from "openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {SafeERC20} from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract ERC20StakingPool is Ownable {
+    using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Metadata;
 
     IERC20Metadata private immutable stakingToken;
-    IERC20Metadata private immutable rewardsToken;
+    IERC20Metadata private immutable rewardToken;
 
     uint256 private _totalStaked;
     uint256 private _totalRewards;
@@ -32,19 +34,19 @@ contract ERC20StakingPool is Ownable {
         uint256 earned;
     }
 
-    constructor(address _stakingToken, address _rewardsToken) {
+    constructor(address _stakingToken, address _rewardToken) {
         stakingToken = IERC20Metadata(_stakingToken);
-        rewardsToken = IERC20Metadata(_rewardsToken);
+        rewardToken = IERC20Metadata(_rewardToken);
 
         // get scales normalizing both tokens to 18 decimals.
         uint8 stakingTokenDecimals = stakingToken.decimals();
-        uint8 rewardsTokenDecimals = rewardsToken.decimals();
+        uint8 rewardTokenDecimals = rewardToken.decimals();
 
         require(stakingTokenDecimals <= 18, "staking token must have less than 18 decimals");
-        require(rewardsTokenDecimals <= 18, "rewards token must have less than 18 decimals");
+        require(rewardTokenDecimals <= 18, "rewards token must have less than 18 decimals");
 
         stakingScale = 10 ** (18 - stakingTokenDecimals);
-        rewardsScale = 10 ** (18 - rewardsTokenDecimals);
+        rewardsScale = 10 ** (18 - rewardTokenDecimals);
     }
 
     function totalStaked() external view returns (uint256) {
@@ -75,7 +77,7 @@ contract ERC20StakingPool is Ownable {
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
-        assert(rewardsToken.balanceOf(address(this)) >= _totalRewards);
+        assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
     }
 
     function unstake(uint256 amount) external {
@@ -88,7 +90,7 @@ contract ERC20StakingPool is Ownable {
         stakingToken.safeTransfer(msg.sender, amount);
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
-        assert(rewardsToken.balanceOf(address(this)) >= _totalRewards);
+        assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
     }
 
     function claim() external {
@@ -97,7 +99,7 @@ contract ERC20StakingPool is Ownable {
         _claimPendingRewards(stakeData);
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
-        assert(rewardsToken.balanceOf(address(this)) >= _totalRewards);
+        assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
     }
 
     function addRewards(uint256 amount, uint256 duration) external onlyOwner {
@@ -108,14 +110,27 @@ contract ERC20StakingPool is Ownable {
 
         _totalRewards += amount;
 
-        rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
+        rewardToken.safeTransferFrom(msg.sender, address(this), amount);
 
         rewardRate = ((amount + _currentRemainingRewards()) * precision) / duration;
         emissionEndingPoint = block.timestamp + duration;
         emissionStartingPoint = block.timestamp;
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
-        assert(rewardsToken.balanceOf(address(this)) >= _totalRewards);
+        assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
+    }
+
+    function sweep(address token) external onlyOwner {
+        if (token == address(stakingToken)) {
+            stakingToken.safeTransfer(msg.sender, stakingToken.balanceOf(address(this)) - _totalStaked);
+        } else if (token == address(rewardToken)) {
+            rewardToken.safeTransfer(msg.sender, rewardToken.balanceOf(address(this)) - _totalRewards);
+        } else {
+            IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
+        }
+
+        assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
+        assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
     }
 
     function _lastEmissionTimestamp() internal view returns (uint256) {
@@ -193,7 +208,7 @@ contract ERC20StakingPool is Ownable {
         _totalRewards -= stakeData.earned;
 
         if (stakeData.earned > 0) {
-            rewardsToken.safeTransfer(msg.sender, stakeData.earned);
+            rewardToken.safeTransfer(msg.sender, stakeData.earned);
             stakeData.earned = 0;
         }
     }
