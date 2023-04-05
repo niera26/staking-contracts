@@ -11,7 +11,7 @@ contract ERC20StakingPool is Ownable {
     IERC20Metadata private immutable stakingToken;
     IERC20Metadata private immutable rewardsToken;
 
-    uint256 private rewardsPerToken;
+    uint256 private lastRewardsPerToken;
 
     mapping(address => StakeData) private addressToStakeData;
 
@@ -22,8 +22,8 @@ contract ERC20StakingPool is Ownable {
     uint256 private _totalStaked;
     uint256 private _totalRewards;
 
-    uint256 private lastDistributionTimestamp;
-    uint256 private endOfEmissionTimestamp;
+    uint256 private emissionStartingPoint;
+    uint256 private emissionEndingPoint;
     uint256 private rewardRate;
 
     struct StakeData {
@@ -50,6 +50,10 @@ contract ERC20StakingPool is Ownable {
         return _totalStaked;
     }
 
+    function totalRewards() external view returns (uint256) {
+        return _totalRewards;
+    }
+
     function stakedAmount(address addr) external view returns (uint256) {
         return addressToStakeData[addr].amount;
     }
@@ -66,9 +70,9 @@ contract ERC20StakingPool is Ownable {
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
         _claimPendingRewards(stakeData);
-        _increaseTotalStaked(amount);
 
-        stakeData.amount += amount;
+        _increaseTotalStaked(stakeData, amount);
+
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
@@ -81,9 +85,9 @@ contract ERC20StakingPool is Ownable {
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
         _claimPendingRewards(stakeData);
-        _decreaseTotalStaked(amount);
 
-        stakeData.amount -= amount;
+        _decreaseTotalStaked(stakeData, amount);
+
         stakingToken.safeTransfer(msg.sender, amount);
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
@@ -108,30 +112,34 @@ contract ERC20StakingPool is Ownable {
         rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
 
         rewardRate = (amount * precision) / duration;
-        endOfEmissionTimestamp = block.timestamp + duration;
-        lastDistributionTimestamp = block.timestamp;
+        emissionEndingPoint = block.timestamp + duration;
+        emissionStartingPoint = block.timestamp;
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
         assert(rewardsToken.balanceOf(address(this)) >= _totalRewards);
     }
 
-    function _secondsSinceLastDistribution() internal view returns (uint256) {
-        return (block.timestamp < endOfEmissionTimestamp ? block.timestamp : endOfEmissionTimestamp)
-            - lastDistributionTimestamp;
+    function _currentEmissionEndingPoint() internal view returns (uint256) {
+        return block.timestamp < emissionEndingPoint ? block.timestamp : emissionEndingPoint;
     }
 
-    function _currentTotalRewards() internal view returns (uint256) {
-        return (_secondsSinceLastDistribution() * rewardRate) / precision;
+    function _secondsSinceEmissionStartingPoint() internal view returns (uint256) {
+        return _currentEmissionEndingPoint() - emissionStartingPoint;
+    }
+
+    function _currentDistributedRewards() internal view returns (uint256) {
+        return (_secondsSinceEmissionStartingPoint() * rewardRate) / precision;
     }
 
     function _currentRewardsPerToken() internal view returns (uint256) {
         if (_totalStaked == 0) {
-            return rewardsPerToken;
+            return lastRewardsPerToken;
         }
 
-        uint256 totalRewards = _currentTotalRewards();
+        uint256 numerator = _currentDistributedRewards() * rewardsScale * precision;
+        uint256 denominator = _totalStaked * stakingScale;
 
-        return rewardsPerToken + (totalRewards * rewardsScale * precision) / (_totalStaked * stakingScale);
+        return lastRewardsPerToken + (numerator / denominator);
     }
 
     function _computePendingRewards(StakeData memory stakeData) internal view returns (uint256) {
@@ -139,19 +147,28 @@ contract ERC20StakingPool is Ownable {
             return 0;
         }
 
-        uint256 unclaimedRewardsPerToken = _currentRewardsPerToken() - stakeData.rewardsPerTokenPaid;
+        uint256 rewardsPerToken = _currentRewardsPerToken() - stakeData.rewardsPerTokenPaid;
+        uint256 numerator = rewardsPerToken * stakeData.amount * stakingScale;
+        uint256 denominator = rewardsScale * precision;
 
-        return (unclaimedRewardsPerToken * stakeData.amount * stakingScale) / (rewardsScale * precision);
+        return numerator / denominator;
     }
 
-    function _increaseTotalStaked(uint256 amount) internal {
+    function _newEmissionStartingPoint() internal {
+        lastRewardsPerToken = _currentRewardsPerToken();
+        emissionStartingPoint = _currentEmissionEndingPoint();
+    }
+
+    function _increaseTotalStaked(StakeData storage stakeData, uint256 amount) internal {
+        _newEmissionStartingPoint();
         _totalStaked += amount;
-        rewardsPerToken = _currentRewardsPerToken();
+        stakeData.amount += amount;
     }
 
-    function _decreaseTotalStaked(uint256 amount) internal {
+    function _decreaseTotalStaked(StakeData storage stakeData, uint256 amount) internal {
+        _newEmissionStartingPoint();
         _totalStaked -= amount;
-        rewardsPerToken = _currentRewardsPerToken();
+        stakeData.amount -= amount;
     }
 
     function _claimPendingRewards(StakeData storage stakeData) internal {
