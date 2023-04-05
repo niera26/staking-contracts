@@ -4,9 +4,11 @@ pragma solidity ^0.8.17;
 import {Ownable} from "openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "openzeppelin/contracts/interfaces/IERC20.sol";
 import {IERC20Metadata} from "openzeppelin/contracts/interfaces/IERC20Metadata.sol";
+import {Pausable} from "openzeppelin/contracts/security/Pausable.sol";
+import {ReentrancyGuard} from "openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {SafeERC20} from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract ERC20StakingPool is Ownable {
+contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 private immutable stakingToken;
@@ -104,7 +106,7 @@ contract ERC20StakingPool is Ownable {
     /**
      * Add tokens to the stake of the holder.
      */
-    function stake(uint256 amount) external {
+    function stake(uint256 amount) external nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
 
         StakeData storage stakeData = addressToStakeData[msg.sender];
@@ -122,7 +124,7 @@ contract ERC20StakingPool is Ownable {
     /**
      * Remove tokens from the stake of the holder.
      */
-    function unstake(uint256 amount) external {
+    function unstake(uint256 amount) external nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
 
         StakeData storage stakeData = addressToStakeData[msg.sender];
@@ -140,7 +142,7 @@ contract ERC20StakingPool is Ownable {
     /**
      * Claim all rewards acumulated by the holder.
      */
-    function claim() external {
+    function claim() external nonReentrant whenNotPaused {
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
         uint256 earned = _earnRewards(stakeData);
@@ -181,6 +183,20 @@ contract ERC20StakingPool is Ownable {
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
         assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
+    }
+
+    /**
+     * Pause the contract.
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * Unpause the contract.
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /**

@@ -2,35 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../src/ERC20StakingPool.sol";
-import "openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-import "openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./ERC20StakingPoolBase.t.sol";
 
-contract ERC20Mock is ERC20 {
-    uint8 private _decimals;
-
-    constructor(string memory name, string memory symbol, uint8 __decimals) ERC20(name, symbol) {
-        _decimals = __decimals;
-
-        _mint(msg.sender, 1_000_000 * (10 ** decimals()));
-    }
-
-    function decimals() public view override returns (uint8) {
-        return _decimals;
-    }
-}
-
-contract ERC20StakingPoolTest is Test {
-    IERC20Metadata private stakingToken;
-    IERC20Metadata private rewardsToken;
-    ERC20StakingPool private poolContract;
-
-    function setUp() public {
-        stakingToken = new ERC20Mock("Staking Token", "STT", 18);
-        rewardsToken = new ERC20Mock("Rewards Token", "RWD", 6);
-        poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken));
-    }
-
+contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
     function testHolderCanStakeAndUnstake() public {
         address holder = vm.addr(1);
 
