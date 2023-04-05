@@ -97,6 +97,7 @@ contract ERC20StakingPoolTest is Test {
         poolContract.stake(700);
         vm.stopPrank();
 
+        // add rewards.
         rewardsToken.approve(address(poolContract), 1000);
 
         poolContract.addRewards(1000, 10);
@@ -162,6 +163,7 @@ contract ERC20StakingPoolTest is Test {
         poolContract.stake(300);
         vm.stopPrank();
 
+        // add rewards.
         rewardsToken.approve(address(poolContract), 1000);
 
         poolContract.addRewards(1000, 10);
@@ -228,6 +230,7 @@ contract ERC20StakingPoolTest is Test {
         poolContract.stake(300);
         vm.stopPrank();
 
+        // add rewards.
         rewardsToken.approve(address(poolContract), 1000);
 
         poolContract.addRewards(1000, 10);
@@ -272,5 +275,68 @@ contract ERC20StakingPoolTest is Test {
 
         assertEq(poolContract.pendingRewards(holder2), 0);
         assertEq(rewardsToken.balanceOf(holder2), holder2OriginalBalance + 550);
+    }
+
+    function testAddRewardsUpdatesDistribution() public {
+        address holder1 = vm.addr(1);
+        address holder2 = vm.addr(2);
+
+        uint256 holder1OriginalBalance = rewardsToken.balanceOf(holder1);
+        uint256 holder2OriginalBalance = rewardsToken.balanceOf(holder2);
+
+        stakingToken.transfer(holder1, 1000);
+        stakingToken.transfer(holder2, 1000);
+
+        vm.startPrank(holder1);
+        stakingToken.approve(address(poolContract), 300);
+        poolContract.stake(300);
+        vm.stopPrank();
+
+        vm.startPrank(holder2);
+        stakingToken.approve(address(poolContract), 700);
+        poolContract.stake(700);
+        vm.stopPrank();
+
+        // add rewards.
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, 10);
+
+        // at first nobody has rewards.
+        assertEq(poolContract.pendingRewards(holder1), 0);
+        assertEq(poolContract.pendingRewards(holder2), 0);
+
+        // at half time they have half their rewards.
+        vm.warp(block.timestamp + 5);
+
+        assertEq(poolContract.pendingRewards(holder1), 150);
+        assertEq(poolContract.pendingRewards(holder2), 350);
+
+        // add second rewards.
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, 10);
+
+        // at end of second distribution, holders have all their rewards.
+        vm.warp(block.timestamp + 10);
+
+        assertEq(poolContract.pendingRewards(holder1), 600);
+        assertEq(poolContract.pendingRewards(holder2), 1400);
+
+        // holder1 claim all.
+        vm.prank(holder1);
+
+        poolContract.claim();
+
+        assertEq(poolContract.pendingRewards(holder1), 0);
+        assertEq(rewardsToken.balanceOf(holder1), holder1OriginalBalance + 600);
+
+        // holder2 claim all.
+        vm.prank(holder2);
+
+        poolContract.claim();
+
+        assertEq(poolContract.pendingRewards(holder2), 0);
+        assertEq(rewardsToken.balanceOf(holder2), holder2OriginalBalance + 1400);
     }
 }

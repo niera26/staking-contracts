@@ -61,7 +61,7 @@ contract ERC20StakingPool is Ownable {
     function pendingRewards(address addr) external view returns (uint256) {
         StakeData memory stakeData = addressToStakeData[addr];
 
-        return _computePendingRewards(stakeData);
+        return _currentPendingRewards(stakeData);
     }
 
     function stake(uint256 amount) external {
@@ -107,11 +107,13 @@ contract ERC20StakingPool is Ownable {
         require(amount > 0, "cannot distribute zero");
         require(duration > 0, "duration must be at least 1s");
 
+        _newEmissionStartingPoint();
+
         _totalRewards += amount;
 
         rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        rewardRate = (amount * precision) / duration;
+        rewardRate = ((amount + _currentRemainingRewards()) * precision) / duration;
         emissionEndingPoint = block.timestamp + duration;
         emissionStartingPoint = block.timestamp;
 
@@ -119,16 +121,24 @@ contract ERC20StakingPool is Ownable {
         assert(rewardsToken.balanceOf(address(this)) >= _totalRewards);
     }
 
-    function _currentEmissionEndingPoint() internal view returns (uint256) {
+    function _lastEmissionTimestamp() internal view returns (uint256) {
         return block.timestamp < emissionEndingPoint ? block.timestamp : emissionEndingPoint;
     }
 
     function _secondsSinceEmissionStartingPoint() internal view returns (uint256) {
-        return _currentEmissionEndingPoint() - emissionStartingPoint;
+        return _lastEmissionTimestamp() - emissionStartingPoint;
+    }
+
+    function _secondsUntilEmissionEndingPoint() internal view returns (uint256) {
+        return emissionEndingPoint - _lastEmissionTimestamp();
     }
 
     function _currentDistributedRewards() internal view returns (uint256) {
         return (_secondsSinceEmissionStartingPoint() * rewardRate) / precision;
+    }
+
+    function _currentRemainingRewards() internal view returns (uint256) {
+        return (_secondsUntilEmissionEndingPoint() * rewardRate) / precision;
     }
 
     function _currentRewardsPerToken() internal view returns (uint256) {
@@ -142,7 +152,7 @@ contract ERC20StakingPool is Ownable {
         return lastRewardsPerToken + (numerator / denominator);
     }
 
-    function _computePendingRewards(StakeData memory stakeData) internal view returns (uint256) {
+    function _currentPendingRewards(StakeData memory stakeData) internal view returns (uint256) {
         if (stakeData.amount == 0) {
             return 0;
         }
@@ -156,7 +166,7 @@ contract ERC20StakingPool is Ownable {
 
     function _newEmissionStartingPoint() internal {
         lastRewardsPerToken = _currentRewardsPerToken();
-        emissionStartingPoint = _currentEmissionEndingPoint();
+        emissionStartingPoint = _lastEmissionTimestamp();
     }
 
     function _increaseTotalStaked(StakeData storage stakeData, uint256 amount) internal {
@@ -172,7 +182,7 @@ contract ERC20StakingPool is Ownable {
     }
 
     function _claimPendingRewards(StakeData storage stakeData) internal {
-        uint256 _pendingRewards = _computePendingRewards(stakeData);
+        uint256 _pendingRewards = _currentPendingRewards(stakeData);
 
         _totalRewards -= _pendingRewards;
 
