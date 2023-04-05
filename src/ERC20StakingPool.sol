@@ -8,10 +8,9 @@ import {SafeERC20} from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"
 
 contract ERC20StakingPool is Ownable {
     using SafeERC20 for IERC20;
-    using SafeERC20 for IERC20Metadata;
 
-    IERC20Metadata private immutable stakingToken;
-    IERC20Metadata private immutable rewardToken;
+    IERC20 private immutable stakingToken;
+    IERC20 private immutable rewardToken;
 
     uint256 private _totalStaked;
     uint256 private _totalRewards;
@@ -24,9 +23,9 @@ contract ERC20StakingPool is Ownable {
     uint256 private immutable stakingScale;
     uint256 private immutable rewardsScale;
 
+    uint256 private rewardRate;
     uint256 private emissionStartingPoint;
     uint256 private emissionEndingPoint;
-    uint256 private rewardRate;
 
     struct StakeData {
         uint256 amount;
@@ -34,16 +33,20 @@ contract ERC20StakingPool is Ownable {
         uint256 earned;
     }
 
+    error ZeroAmount();
+    error ZeroDuration();
+    error TooMuchDecimals(address token, uint8 decimals);
+
     constructor(address _stakingToken, address _rewardToken) {
-        stakingToken = IERC20Metadata(_stakingToken);
-        rewardToken = IERC20Metadata(_rewardToken);
-
         // get scales normalizing both tokens to 18 decimals.
-        uint8 stakingTokenDecimals = stakingToken.decimals();
-        uint8 rewardTokenDecimals = rewardToken.decimals();
+        uint8 stakingTokenDecimals = IERC20Metadata(_stakingToken).decimals();
+        uint8 rewardTokenDecimals = IERC20Metadata(_rewardToken).decimals();
 
-        require(stakingTokenDecimals <= 18, "staking token must have less than 18 decimals");
-        require(rewardTokenDecimals <= 18, "rewards token must have less than 18 decimals");
+        if (stakingTokenDecimals > 18) revert TooMuchDecimals(_stakingToken, stakingTokenDecimals);
+        if (rewardTokenDecimals > 18) revert TooMuchDecimals(_rewardToken, rewardTokenDecimals);
+
+        stakingToken = IERC20(_stakingToken);
+        rewardToken = IERC20(_rewardToken);
 
         stakingScale = 10 ** (18 - stakingTokenDecimals);
         rewardsScale = 10 ** (18 - rewardTokenDecimals);
@@ -68,11 +71,11 @@ contract ERC20StakingPool is Ownable {
     }
 
     function stake(uint256 amount) external {
-        require(amount > 0, "cannot stake zero");
+        if (amount == 0) revert ZeroAmount();
 
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
-        _increaseTotalStaked(stakeData, amount);
+        _increaseStaked(stakeData, amount);
 
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -81,11 +84,11 @@ contract ERC20StakingPool is Ownable {
     }
 
     function unstake(uint256 amount) external {
-        require(amount > 0, "cannot unstake zero");
+        if (amount == 0) revert ZeroAmount();
 
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
-        _decreaseTotalStaked(stakeData, amount);
+        _decreaseStaked(stakeData, amount);
 
         stakingToken.safeTransfer(msg.sender, amount);
 
@@ -96,15 +99,23 @@ contract ERC20StakingPool is Ownable {
     function claim() external {
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
-        _claimPendingRewards(stakeData);
+        _earnRewards(stakeData);
+
+        uint256 earned = stakeData.earned;
+
+        if (earned > 0) {
+            _totalRewards -= earned;
+            stakeData.earned = 0;
+            rewardToken.safeTransfer(msg.sender, earned);
+        }
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
         assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
     }
 
     function addRewards(uint256 amount, uint256 duration) external onlyOwner {
-        require(amount > 0, "cannot distribute zero");
-        require(duration > 0, "duration must be at least 1s");
+        if (amount == 0) revert ZeroAmount();
+        if (duration == 0) revert ZeroDuration();
 
         _newEmissionStartingPoint();
 
@@ -112,7 +123,9 @@ contract ERC20StakingPool is Ownable {
 
         rewardToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        rewardRate = ((amount + _currentRemainingRewards()) * precision) / duration;
+        uint256 newAmount = _currentRemainingRewards() + amount;
+
+        rewardRate = (newAmount * precision) / duration;
         emissionEndingPoint = block.timestamp + duration;
         emissionStartingPoint = block.timestamp;
 
@@ -188,28 +201,17 @@ contract ERC20StakingPool is Ownable {
         stakeData.rewardsPerTokenPaid = _currentRewardsPerToken();
     }
 
-    function _increaseTotalStaked(StakeData storage stakeData, uint256 amount) internal {
+    function _increaseStaked(StakeData storage stakeData, uint256 amount) internal {
         _earnRewards(stakeData);
 
         _totalStaked += amount;
         stakeData.amount += amount;
     }
 
-    function _decreaseTotalStaked(StakeData storage stakeData, uint256 amount) internal {
+    function _decreaseStaked(StakeData storage stakeData, uint256 amount) internal {
         _earnRewards(stakeData);
 
         _totalStaked -= amount;
         stakeData.amount -= amount;
-    }
-
-    function _claimPendingRewards(StakeData storage stakeData) internal {
-        _earnRewards(stakeData);
-
-        _totalRewards -= stakeData.earned;
-
-        if (stakeData.earned > 0) {
-            rewardToken.safeTransfer(msg.sender, stakeData.earned);
-            stakeData.earned = 0;
-        }
     }
 }
