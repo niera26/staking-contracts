@@ -15,10 +15,6 @@ contract ERC20StakingPool is Ownable {
     uint256 private _totalStaked;
     uint256 private _totalRewards;
 
-    uint256 private lastRewardsPerToken;
-
-    mapping(address => StakeData) private addressToStakeData;
-
     uint256 private constant precision = 10 ** 18;
     uint256 private immutable stakingScale;
     uint256 private immutable rewardsScale;
@@ -27,11 +23,21 @@ contract ERC20StakingPool is Ownable {
     uint256 private emissionStartingPoint;
     uint256 private emissionEndingPoint;
 
+    uint256 private lastRewardsPerToken;
+
+    mapping(address => StakeData) private addressToStakeData;
+
     struct StakeData {
         uint256 amount;
         uint256 rewardsPerTokenPaid;
         uint256 earned;
     }
+
+    event TokenStacked(address indexed holder, uint256 amount);
+    event TokenUnstacked(address indexed holder, uint256 amount);
+
+    event RewardsAdded(uint256 amount);
+    event RewardsClaimed(address indexed holder, uint256 amount);
 
     error ZeroAmount();
     error ZeroDuration();
@@ -79,6 +85,8 @@ contract ERC20StakingPool is Ownable {
 
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
 
+        emit TokenStacked(msg.sender, amount);
+
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
         assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
     }
@@ -91,6 +99,8 @@ contract ERC20StakingPool is Ownable {
         _decreaseStaked(stakeData, amount);
 
         stakingToken.safeTransfer(msg.sender, amount);
+
+        emit TokenUnstacked(msg.sender, amount);
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
         assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
@@ -107,6 +117,8 @@ contract ERC20StakingPool is Ownable {
             _totalRewards -= earned;
             stakeData.earned = 0;
             rewardToken.safeTransfer(msg.sender, earned);
+
+            emit RewardsClaimed(msg.sender, earned);
         }
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
@@ -128,6 +140,8 @@ contract ERC20StakingPool is Ownable {
         rewardRate = (newAmount * precision) / duration;
         emissionEndingPoint = block.timestamp + duration;
         emissionStartingPoint = block.timestamp;
+
+        emit RewardsAdded(amount);
 
         assert(stakingToken.balanceOf(address(this)) >= _totalStaked);
         assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
