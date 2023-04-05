@@ -11,6 +11,9 @@ contract ERC20StakingPool is Ownable {
     IERC20Metadata private immutable stakingToken;
     IERC20Metadata private immutable rewardsToken;
 
+    uint256 private _totalStaked;
+    uint256 private _totalRewards;
+
     uint256 private lastRewardsPerToken;
 
     mapping(address => StakeData) private addressToStakeData;
@@ -19,9 +22,6 @@ contract ERC20StakingPool is Ownable {
     uint256 private immutable stakingScale;
     uint256 private immutable rewardsScale;
 
-    uint256 private _totalStaked;
-    uint256 private _totalRewards;
-
     uint256 private emissionStartingPoint;
     uint256 private emissionEndingPoint;
     uint256 private rewardRate;
@@ -29,6 +29,7 @@ contract ERC20StakingPool is Ownable {
     struct StakeData {
         uint256 amount;
         uint256 rewardsPerTokenPaid;
+        uint256 earned;
     }
 
     constructor(address _stakingToken, address _rewardsToken) {
@@ -69,8 +70,6 @@ contract ERC20StakingPool is Ownable {
 
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
-        _claimPendingRewards(stakeData);
-
         _increaseTotalStaked(stakeData, amount);
 
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
@@ -83,8 +82,6 @@ contract ERC20StakingPool is Ownable {
         require(amount > 0, "cannot unstake zero");
 
         StakeData storage stakeData = addressToStakeData[msg.sender];
-
-        _claimPendingRewards(stakeData);
 
         _decreaseTotalStaked(stakeData, amount);
 
@@ -153,15 +150,11 @@ contract ERC20StakingPool is Ownable {
     }
 
     function _currentPendingRewards(StakeData memory stakeData) internal view returns (uint256) {
-        if (stakeData.amount == 0) {
-            return 0;
-        }
-
         uint256 rewardsPerToken = _currentRewardsPerToken() - stakeData.rewardsPerTokenPaid;
         uint256 numerator = rewardsPerToken * stakeData.amount * stakingScale;
         uint256 denominator = rewardsScale * precision;
 
-        return numerator / denominator;
+        return stakeData.earned + (numerator / denominator);
     }
 
     function _newEmissionStartingPoint() internal {
@@ -169,27 +162,35 @@ contract ERC20StakingPool is Ownable {
         emissionStartingPoint = _lastEmissionTimestamp();
     }
 
-    function _increaseTotalStaked(StakeData storage stakeData, uint256 amount) internal {
+    function _earnRewards(StakeData storage stakeData) internal {
         _newEmissionStartingPoint();
+
+        stakeData.earned = _currentPendingRewards(stakeData);
+        stakeData.rewardsPerTokenPaid = _currentRewardsPerToken();
+    }
+
+    function _increaseTotalStaked(StakeData storage stakeData, uint256 amount) internal {
+        _earnRewards(stakeData);
+
         _totalStaked += amount;
         stakeData.amount += amount;
     }
 
     function _decreaseTotalStaked(StakeData storage stakeData, uint256 amount) internal {
-        _newEmissionStartingPoint();
+        _earnRewards(stakeData);
+
         _totalStaked -= amount;
         stakeData.amount -= amount;
     }
 
     function _claimPendingRewards(StakeData storage stakeData) internal {
-        uint256 _pendingRewards = _currentPendingRewards(stakeData);
+        _earnRewards(stakeData);
 
-        _totalRewards -= _pendingRewards;
+        _totalRewards -= stakeData.earned;
 
-        stakeData.rewardsPerTokenPaid = _currentRewardsPerToken();
-
-        if (_pendingRewards > 0) {
-            rewardsToken.safeTransfer(msg.sender, _pendingRewards);
+        if (stakeData.earned > 0) {
+            rewardsToken.safeTransfer(msg.sender, stakeData.earned);
+            stakeData.earned = 0;
         }
     }
 }
