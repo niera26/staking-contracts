@@ -91,13 +91,32 @@ contract ERC20StakingPoolTest is Test {
 
         rewardsToken.approve(address(poolContract), 1000);
 
-        poolContract.addRewards(1000, 1);
+        poolContract.addRewards(1000, 10);
 
-        vm.warp(block.timestamp + 1);
+        // at first nobody has rewards.
+        assertEq(poolContract.pendingRewards(holder1), 0);
+        assertEq(poolContract.pendingRewards(holder2), 0);
 
-        assertEq(poolContract.pendingRewards(holder1), 300);
+        // at half time they should have half their rewards.
+        vm.warp(block.timestamp + 5);
+
+        assertEq(poolContract.pendingRewards(holder1), 150);
+        assertEq(poolContract.pendingRewards(holder2), 350);
+
+        // holder1 claim his rewards, so half his rewards.
+        vm.prank(holder1);
+
+        poolContract.claim();
+
+        assertEq(rewardsToken.balanceOf(holder1), holder1OriginalBalance + 150);
+
+        // at full time they should have all their rewards.
+        vm.warp(block.timestamp + 5);
+
+        assertEq(poolContract.pendingRewards(holder1), 150);
         assertEq(poolContract.pendingRewards(holder2), 700);
 
+        // they can claim.
         vm.prank(holder1);
 
         poolContract.claim();

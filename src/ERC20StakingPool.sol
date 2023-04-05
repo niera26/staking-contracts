@@ -159,7 +159,7 @@ contract ERC20StakingPool is Ownable {
 
         _totalRewards -= _pendingRewards;
 
-        stakeData.rewardsPerTokenPaid = rewardsPerToken;
+        stakeData.rewardsPerTokenPaid = _currentRewardsPerToken();
 
         if (_pendingRewards > 0) {
             rewardsToken.safeTransfer(msg.sender, _pendingRewards);
