@@ -130,12 +130,16 @@ contract ERC20StakingPool is Ownable {
         return emissionEndingPoint - _lastEmissionTimestamp();
     }
 
+    function _currentRewardAmountFor(uint256 duration) internal view returns (uint256) {
+        return (duration * rewardRate) / precision;
+    }
+
     function _currentDistributedRewards() internal view returns (uint256) {
-        return (_secondsSinceEmissionStartingPoint() * rewardRate) / precision;
+        return _currentRewardAmountFor(_secondsSinceEmissionStartingPoint());
     }
 
     function _currentRemainingRewards() internal view returns (uint256) {
-        return (_secondsUntilEmissionEndingPoint() * rewardRate) / precision;
+        return _currentRewardAmountFor(_secondsUntilEmissionEndingPoint());
     }
 
     function _currentRewardsPerToken() internal view returns (uint256) {
