@@ -44,7 +44,7 @@ contract ERC20StakingPoolTest is Test {
         vm.stopPrank();
 
         assertEq(poolContract.totalStaked(), 300);
-        assertEq(poolContract.stakedAmount(holder), 300);
+        assertEq(poolContract.staked(holder), 300);
         assertEq(stakingToken.balanceOf(holder), holderOriginalBalance - 300);
         assertEq(stakingToken.balanceOf(address(poolContract)), 300);
 
@@ -54,7 +54,7 @@ contract ERC20StakingPoolTest is Test {
         vm.stopPrank();
 
         assertEq(poolContract.totalStaked(), 1000);
-        assertEq(poolContract.stakedAmount(holder), 1000);
+        assertEq(poolContract.staked(holder), 1000);
         assertEq(stakingToken.balanceOf(holder), holderOriginalBalance - 1000);
         assertEq(stakingToken.balanceOf(address(poolContract)), 1000);
 
@@ -63,7 +63,7 @@ contract ERC20StakingPoolTest is Test {
         poolContract.unstake(200);
 
         assertEq(poolContract.totalStaked(), 800);
-        assertEq(poolContract.stakedAmount(holder), 800);
+        assertEq(poolContract.staked(holder), 800);
         assertEq(stakingToken.balanceOf(holder), holderOriginalBalance - 800);
         assertEq(stakingToken.balanceOf(address(poolContract)), 800);
 
@@ -72,7 +72,7 @@ contract ERC20StakingPoolTest is Test {
         poolContract.unstake(800);
 
         assertEq(poolContract.totalStaked(), 0);
-        assertEq(poolContract.stakedAmount(holder), 0);
+        assertEq(poolContract.staked(holder), 0);
         assertEq(stakingToken.balanceOf(holder), holderOriginalBalance);
         assertEq(stakingToken.balanceOf(address(poolContract)), 0);
     }

@@ -12,25 +12,32 @@ contract ERC20StakingPool is Ownable {
     IERC20 private immutable stakingToken;
     IERC20 private immutable rewardToken;
 
+    // exact numbers of both tokens managed by the contract.
+    // allows to sweep dust and accidental transfer to the contract.
     uint256 private _totalStaked;
     uint256 private _totalRewards;
 
+    // constants used for the computation.
+    // scales allow not normalize both tokens to 18 decimals.
     uint256 private constant precision = 10 ** 18;
     uint256 private immutable stakingScale;
     uint256 private immutable rewardsScale;
 
+    // number of token to emit per second between starting and ending points.
     uint256 private rewardRate;
     uint256 private emissionStartingPoint;
     uint256 private emissionEndingPoint;
 
+    // reward token per staked token since last stake/unstake/claim/addRewards.
     uint256 private lastRewardsPerToken;
 
+    // map address to stake data.
     mapping(address => StakeData) private addressToStakeData;
 
     struct StakeData {
-        uint256 amount;
-        uint256 rewardsPerTokenPaid;
-        uint256 earned;
+        uint256 amount; // amount of staked token.
+        uint256 earned; // rewards earned so far and yet to claim.
+        uint256 rewardsPerTokenPaid; // rewards per staked token of the last claim.
     }
 
     event TokenStacked(address indexed holder, uint256 amount);
@@ -44,7 +51,6 @@ contract ERC20StakingPool is Ownable {
     error TooMuchDecimals(address token, uint8 decimals);
 
     constructor(address _stakingToken, address _rewardToken) {
-        // get scales normalizing both tokens to 18 decimals.
         uint8 stakingTokenDecimals = IERC20Metadata(_stakingToken).decimals();
         uint8 rewardTokenDecimals = IERC20Metadata(_rewardToken).decimals();
 
@@ -58,24 +64,39 @@ contract ERC20StakingPool is Ownable {
         rewardsScale = 10 ** (18 - rewardTokenDecimals);
     }
 
+    /**
+     * Total number of staked token managed by the contract (going in stake and out of unstake)
+     */
     function totalStaked() external view returns (uint256) {
         return _totalStaked;
     }
 
+    /**
+     * Total number of rewards token managed by the contract (going in addRewards and out of claim)
+     */
     function totalRewards() external view returns (uint256) {
         return _totalRewards;
     }
 
-    function stakedAmount(address addr) external view returns (uint256) {
+    /**
+     * Staked amount of the given holder.
+     */
+    function staked(address addr) external view returns (uint256) {
         return addressToStakeData[addr].amount;
     }
 
+    /**
+     * Pending rewards of the given holder.
+     */
     function pendingRewards(address addr) external view returns (uint256) {
         StakeData memory stakeData = addressToStakeData[addr];
 
         return _currentPendingRewards(stakeData);
     }
 
+    /**
+     * Add tokens to the stake of the holder.
+     */
     function stake(uint256 amount) external {
         if (amount == 0) revert ZeroAmount();
 
@@ -91,6 +112,9 @@ contract ERC20StakingPool is Ownable {
         assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
     }
 
+    /**
+     * Remove tokens from the stake of the holder.
+     */
     function unstake(uint256 amount) external {
         if (amount == 0) revert ZeroAmount();
 
@@ -106,6 +130,9 @@ contract ERC20StakingPool is Ownable {
         assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
     }
 
+    /**
+     * Claim all rewards acumulated by the holder.
+     */
     function claim() external {
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
@@ -125,6 +152,11 @@ contract ERC20StakingPool is Ownable {
         assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
     }
 
+    /**
+     * Add the given amount of rewards and distribute it over the given duration.
+     *
+     * Accumulates the remaining rewards of the current distribution.
+     */
     function addRewards(uint256 amount, uint256 duration) external onlyOwner {
         if (amount == 0) revert ZeroAmount();
         if (duration == 0) revert ZeroDuration();
@@ -147,6 +179,11 @@ contract ERC20StakingPool is Ownable {
         assert(rewardToken.balanceOf(address(this)) >= _totalRewards);
     }
 
+    /**
+     * Allow owner to sweep any token accidently sent to this contract.
+     *
+     * Staked token and rewards token can be sweeped up to the amount managed by the contract.
+     */
     function sweep(address token) external onlyOwner {
         if (token == address(stakingToken)) {
             stakingToken.safeTransfer(msg.sender, stakingToken.balanceOf(address(this)) - _totalStaked);
