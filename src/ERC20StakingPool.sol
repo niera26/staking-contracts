@@ -94,7 +94,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
      * Amount of rewards remaining to distribute.
      */
     function remainingRewards() external view returns (uint256) {
-        return _remainingRewards();
+        return _remainingRewards(1);
     }
 
     /**
@@ -257,24 +257,24 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
      *
      * I think it is easier to understand than a rewards rate.
      */
-    function _rewardAmountFor(uint256 duration) internal view returns (uint256) {
+    function _rewardAmountFor(uint256 duration, uint256 _precision) internal view returns (uint256) {
         if (lastDistributionStartingTime >= lastDistributionEndingTime) return 0;
 
-        return (duration * lastRewardsAmount) / (lastDistributionEndingTime - lastDistributionStartingTime);
+        return (duration * lastRewardsAmount * _precision) / (lastDistributionEndingTime - lastDistributionStartingTime);
     }
 
     /**
      * Amount of rewards that has been distributed so far for the last distribution.
      */
-    function _distributedRewards() internal view returns (uint256) {
-        return _rewardAmountFor(_elapsedSeconds());
+    function _distributedRewards(uint256 _precision) internal view returns (uint256) {
+        return _rewardAmountFor(_elapsedSeconds(), _precision);
     }
 
     /**
      * Amount of rewards yet to be distributed for the last distribution.
      */
-    function _remainingRewards() internal view returns (uint256) {
-        return _rewardAmountFor(_remainingSeconds());
+    function _remainingRewards(uint256 _precision) internal view returns (uint256) {
+        return _rewardAmountFor(_remainingSeconds(), _precision);
     }
 
     /**
@@ -286,7 +286,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
             return rewardsPerTokenAcc;
         }
 
-        uint256 numerator = _distributedRewards() * rewardsScale * precision;
+        uint256 numerator = _distributedRewards(rewardsScale * precision);
         uint256 denominator = stakedAmountStored * stakingScale;
 
         return rewardsPerTokenAcc + (numerator / denominator);
@@ -326,7 +326,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
         rewardsPerTokenAcc = _rewardsPerToken();
 
         stakedAmountStored = amount;
-        lastRewardsAmount = _remainingRewards();
+        lastRewardsAmount = _remainingRewards(1);
         lastDistributionStartingTime = _cappedByDistributionTime(block.timestamp);
     }
 
@@ -341,7 +341,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
         rewardsPerTokenAcc = _rewardsPerToken();
 
         rewardAmountStored += amount;
-        lastRewardsAmount = _remainingRewards() + amount;
+        lastRewardsAmount = _remainingRewards(1) + amount;
         lastDistributionStartingTime = block.timestamp;
         lastDistributionEndingTime = block.timestamp + duration;
     }
