@@ -15,7 +15,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     IERC20 private immutable rewardToken;
 
     // numbers of both tokens stored in the pool (differs from contract balance).
-    // allows to sweep rewards dust and accidental transfer to the contract.
+    // allows to sweep accidental transfer to the contract.
     // also stacked amount is used for the rewards per token computation.
     uint256 private stakedAmountStored;
     uint256 private rewardAmountStored;
@@ -168,12 +168,13 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     function claim() external nonReentrant whenNotPaused {
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
-        uint256 claimed = _claimStakeRewards(stakeData);
+        uint256 earned = _earnStakeRewards(stakeData);
 
-        if (claimed > 0) {
-            rewardToken.safeTransfer(msg.sender, claimed);
-
-            emit RewardsClaimed(msg.sender, claimed);
+        if (earned > 0) {
+            stakeData.earned = 0;
+            rewardAmountStored -= earned;
+            rewardToken.safeTransfer(msg.sender, earned);
+            emit RewardsClaimed(msg.sender, earned);
         }
 
         assert(stakingToken.balanceOf(address(this)) >= stakedAmountStored);
@@ -311,21 +312,6 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
         stakeData.earned = _stakePendingRewards(stakeData);
         stakeData.lastRewardsPerToken = _rewardsPerToken();
         return stakeData.earned;
-    }
-
-    /**
-     * Claim the rewards of the given stake.
-     * Returns the value claimed by the given stake.
-     */
-    function _claimStakeRewards(StakeData storage stakeData) internal returns (uint256) {
-        uint256 earned = _earnStakeRewards(stakeData);
-
-        if (earned > 0) {
-            stakeData.earned = 0;
-            rewardAmountStored -= earned;
-        }
-
-        return earned;
     }
 
     /**
