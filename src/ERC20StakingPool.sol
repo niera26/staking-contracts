@@ -115,7 +115,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
      * Pending rewards of the given holder.
      */
     function pendingRewards(address addr) external view returns (uint256) {
-        return _stakePendingRewards(addressToStakeData[addr]);
+        return _pendingRewards(addressToStakeData[addr]);
     }
 
     /**
@@ -126,7 +126,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
 
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
-        _earnStakeRewards(stakeData);
+        _earnRewards(stakeData);
         _updateTotalStaked(stakedAmountStored + amount);
 
         stakeData.amount += amount;
@@ -149,7 +149,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
 
         if (amount > stakeData.amount) revert InsufficientStakedAmount(stakeData.amount, amount);
 
-        _earnStakeRewards(stakeData);
+        _earnRewards(stakeData);
         _updateTotalStaked(stakedAmountStored - amount);
 
         stakeData.amount -= amount;
@@ -168,7 +168,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     function claim() external nonReentrant whenNotPaused {
         StakeData storage stakeData = addressToStakeData[msg.sender];
 
-        uint256 earned = _earnStakeRewards(stakeData);
+        uint256 earned = _earnRewards(stakeData);
 
         if (earned > 0) {
             stakeData.earned = 0;
@@ -295,7 +295,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     /**
      * Pending rewards of the given stake.
      */
-    function _stakePendingRewards(StakeData memory stakeData) internal view returns (uint256) {
+    function _pendingRewards(StakeData memory stakeData) internal view returns (uint256) {
         uint256 rewardsPerToken = _rewardsPerToken() - stakeData.lastRewardsPerToken;
         uint256 numerator = rewardsPerToken * stakeData.amount * stakingScale;
         uint256 denominator = rewardsScale * precision;
@@ -308,8 +308,8 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
      * Set its last rewards per token to the current value so those rewards cant be earned again.
      * Returns the value earned by the stake.
      */
-    function _earnStakeRewards(StakeData storage stakeData) internal returns (uint256) {
-        stakeData.earned = _stakePendingRewards(stakeData);
+    function _earnRewards(StakeData storage stakeData) internal returns (uint256) {
+        stakeData.earned = _pendingRewards(stakeData);
         stakeData.lastRewardsPerToken = _rewardsPerToken();
         return stakeData.earned;
     }
