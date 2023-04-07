@@ -9,7 +9,32 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
     event RewardsClaimed(address indexed holder, uint256 amount);
 
-    function testClaim_transfersTokensFromContractToHolder() public {
+    function testClaim_doesNottransferTokenFromContractToHolderWhenHolderHasNoRewards() public {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, 1000);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), 1000);
+        poolContract.stake(1000);
+        vm.stopPrank();
+
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, duration);
+
+        uint256 holderOriginalBalance = rewardsToken.balanceOf(holder);
+        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
+
+        vm.prank(holder);
+
+        poolContract.claim();
+
+        assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance);
+    }
+
+    function testClaim_transfersTokensFromContractToHolderWhenHolderHasRewards() public {
         address holder = vm.addr(1);
 
         stakingToken.transfer(holder, 1000);
@@ -55,15 +80,15 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
         poolContract.stake(1000);
         vm.stopPrank();
 
-        poolContract.addRewards(1000, 10);
+        rewardsToken.approve(address(poolContract), 1000);
 
-        vm.warp(block.timestamp + 10);
+        poolContract.addRewards(1000, 10);
 
         // here we dont go in future.
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsClaimed(holder, 1000);
+        emit RewardsClaimed(holder, 0);
 
         vm.prank(holder);
 
