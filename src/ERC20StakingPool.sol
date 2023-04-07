@@ -36,6 +36,11 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     uint256 private immutable stakingScale;
     uint256 private immutable rewardsScale;
 
+    // some constant for max distribution amount and duration.
+    uint256 public immutable maxRewardsAmount;
+    uint256 public immutable maxRewardsDuration = 365 days;
+    uint256 private constant maxRewardsBaseAmount = 1_000_000_000;
+
     // map address to stake data.
     mapping(address => StakeData) private addressToStakeData;
 
@@ -57,6 +62,8 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     error ZeroAmount();
     error ZeroDuration();
     error TooMuchDecimals(address token, uint8 decimals);
+    error RewardsAmountTooLarge(uint256 max, uint256 amount);
+    error RewardsDurationTooLarge(uint256 max, uint256 amount);
     error InsufficientStakedAmount(uint256 staked, uint256 amount);
 
     /**
@@ -74,6 +81,8 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
 
         stakingScale = 10 ** (18 - stakingTokenDecimals);
         rewardsScale = 10 ** (18 - rewardTokenDecimals);
+
+        maxRewardsAmount = maxRewardsBaseAmount * (10 ** rewardTokenDecimals);
     }
 
     /**
@@ -187,6 +196,8 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     function addRewards(uint256 amount, uint256 duration) external onlyOwner {
         if (amount == 0) revert ZeroAmount();
         if (duration == 0) revert ZeroDuration();
+        if (amount > maxRewardsAmount) revert RewardsAmountTooLarge(maxRewardsAmount, amount);
+        if (duration > maxRewardsDuration) revert RewardsDurationTooLarge(maxRewardsDuration, duration);
 
         _updateTotalRewards(amount, duration);
 

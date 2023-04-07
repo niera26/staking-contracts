@@ -12,7 +12,7 @@ contract ERC20Mock is ERC20 {
     constructor(string memory name, string memory symbol, uint8 __decimals) ERC20(name, symbol) {
         _decimals = __decimals;
 
-        _mint(msg.sender, 1_000_000 * (10 ** decimals()));
+        _mint(msg.sender, 10_000_000_000 * (10 ** decimals()));
     }
 
     function decimals() public view override returns (uint8) {
