@@ -105,7 +105,80 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
         poolContract.unstake(1000);
     }
 
-    function testUnstakeSome_doesNottransferTokenFromContractToHolderWhenHolderHasNoRewards() public {
+    function testUnstakeSome_doesNotReduceTotalRewards() public {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, 1000);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), 1000);
+        poolContract.stake(1000);
+        vm.stopPrank();
+
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, 10);
+
+        uint256 originalTotalRewards = poolContract.totalRewards();
+
+        vm.warp(block.timestamp + 5);
+
+        vm.prank(holder);
+
+        poolContract.unstake(500);
+
+        assertEq(poolContract.totalRewards(), originalTotalRewards);
+    }
+
+    function testUnstakeAll_doesNotReduceTotalRewardsWhenHolderHasNoReward() public {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, 1000);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), 1000);
+        poolContract.stake(1000);
+        vm.stopPrank();
+
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, 10);
+
+        uint256 originalTotalRewards = poolContract.totalRewards();
+
+        vm.prank(holder);
+
+        poolContract.unstake(1000);
+
+        assertEq(poolContract.totalRewards(), originalTotalRewards);
+    }
+
+    function testUnstakeAll_reducesTotalRewardsWhenHolderHasRewards() public {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, 1000);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), 1000);
+        poolContract.stake(1000);
+        vm.stopPrank();
+
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, 10);
+
+        uint256 originalTotalRewards = poolContract.totalRewards();
+
+        vm.warp(block.timestamp + 5);
+
+        vm.prank(holder);
+
+        poolContract.unstake(1000);
+
+        assertEq(poolContract.totalRewards(), originalTotalRewards - 500);
+    }
+
+    function testUnstakeSome_doesNotTransferTokenFromContractToHolder() public {
         address holder = vm.addr(1);
 
         stakingToken.transfer(holder, 1000);
@@ -132,7 +205,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance);
     }
 
-    function testUnstakeAll_doesNottransferTokenFromContractToHolderWhenHolderHasNoRewards() public {
+    function testUnstakeAll_doesNotTransferTokenFromContractToHolderWhenHolderHasNoRewards() public {
         address holder = vm.addr(1);
 
         stakingToken.transfer(holder, 1000);
@@ -184,7 +257,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 500);
     }
 
-    function testFailUnstakeSome_emitsRewardsClaimedWhenHolderHasNoReward() public {
+    function testFailUnstakeSome_emitsRewardsClaimed() public {
         address holder = vm.addr(1);
 
         stakingToken.transfer(holder, 1000);
