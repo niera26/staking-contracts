@@ -7,7 +7,7 @@ import "./ERC20StakingPoolBase.t.sol";
 contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
     event TokenUnstacked(address indexed holder, uint256 amount);
 
-    function testStake_increasesHolderStake() public {
+    function testStake_decreasesHolderStake() public {
         address holder = vm.addr(1);
 
         stakingToken.transfer(holder, 1000);
@@ -32,7 +32,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
         assertEq(poolContract.staked(holder), originalHolderStake - 1000);
     }
 
-    function testStake_increasesTotalStaked() public {
+    function testStake_decreasesTotalStaked() public {
         address holder = vm.addr(1);
 
         stakingToken.transfer(holder, 1000);
