@@ -150,6 +150,8 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
 
     /**
      * Remove tokens from the stake of the holder.
+     *
+     * If Everything is unstaked, automatically claim the rewards.
      */
     function unstake(uint256 amount) external nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
@@ -158,7 +160,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
 
         if (amount > stakeData.amount) revert InsufficientStakedAmount(stakeData.amount, amount);
 
-        _earnRewards(stakeData);
+        uint256 earned = _earnRewards(stakeData);
         _updateTotalStaked(stakedAmountStored - amount);
 
         stakeData.amount -= amount;
@@ -166,6 +168,13 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
         stakingToken.safeTransfer(msg.sender, amount);
 
         emit TokenUnstacked(msg.sender, amount);
+
+        if (stakeData.amount == 0 && earned > 0) {
+            stakeData.earned = 0;
+            rewardAmountStored -= earned;
+            rewardToken.safeTransfer(msg.sender, earned);
+            emit RewardsClaimed(msg.sender, earned);
+        }
 
         assert(stakingToken.balanceOf(address(this)) >= stakedAmountStored);
         assert(rewardToken.balanceOf(address(this)) >= rewardAmountStored);

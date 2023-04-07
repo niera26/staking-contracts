@@ -6,6 +6,7 @@ import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
     event TokenUnstacked(address indexed holder, uint256 amount);
+    event RewardsClaimed(address indexed holder, uint256 amount);
 
     function testUnstake_decreasesHolderStake() public {
         address holder = vm.addr(1);
@@ -98,6 +99,160 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
         vm.expectEmit(true, true, true, true, address(poolContract));
 
         emit TokenUnstacked(holder, 1000);
+
+        vm.prank(holder);
+
+        poolContract.unstake(1000);
+    }
+
+    function testUnstakeSome_doesNottransferTokenFromContractToHolderWhenHolderHasNoRewards() public {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, 1000);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), 1000);
+        poolContract.stake(1000);
+        vm.stopPrank();
+
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, 10);
+
+        uint256 holderOriginalBalance = rewardsToken.balanceOf(holder);
+        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
+
+        vm.warp(block.timestamp + 5);
+
+        vm.prank(holder);
+
+        poolContract.unstake(500);
+
+        assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance);
+    }
+
+    function testUnstakeAll_doesNottransferTokenFromContractToHolderWhenHolderHasNoRewards() public {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, 1000);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), 1000);
+        poolContract.stake(1000);
+        vm.stopPrank();
+
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, 10);
+
+        uint256 holderOriginalBalance = rewardsToken.balanceOf(holder);
+        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
+
+        vm.prank(holder);
+
+        poolContract.unstake(1000);
+
+        assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance);
+    }
+
+    function testUnstakeAll_transfersTokensFromContractToHolderWhenHolderHasRewards() public {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, 1000);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), 1000);
+        poolContract.stake(1000);
+        vm.stopPrank();
+
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, 10);
+
+        uint256 holderOriginalBalance = rewardsToken.balanceOf(holder);
+        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
+
+        vm.warp(block.timestamp + 5);
+
+        vm.prank(holder);
+
+        poolContract.unstake(1000);
+
+        assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance + 500);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 500);
+    }
+
+    function testFailUnstakeSome_emitsRewardsClaimedWhenHolderHasNoReward() public {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, 1000);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), 1000);
+        poolContract.stake(1000);
+        vm.stopPrank();
+
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, 10);
+
+        vm.warp(block.timestamp + 5);
+
+        vm.expectEmit(true, true, true, true, address(poolContract));
+
+        emit RewardsClaimed(holder, 0);
+
+        vm.prank(holder);
+
+        poolContract.unstake(500);
+    }
+
+    function testFailUnstakeAll_emitsRewardsClaimedWhenHolderHasNoReward() public {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, 1000);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), 1000);
+        poolContract.stake(1000);
+        vm.stopPrank();
+
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, 10);
+
+        // here we dont go in future.
+
+        vm.expectEmit(true, true, true, true, address(poolContract));
+
+        emit RewardsClaimed(holder, 0);
+
+        vm.prank(holder);
+
+        poolContract.unstake(1000);
+    }
+
+    function testUnstakeAll_emitsRewardsClaimedWhenHolderHasRewards() public {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, 1000);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), 1000);
+        poolContract.stake(1000);
+        vm.stopPrank();
+
+        rewardsToken.approve(address(poolContract), 1000);
+
+        poolContract.addRewards(1000, 10);
+
+        vm.warp(block.timestamp + 10);
+
+        vm.expectEmit(true, true, true, true, address(poolContract));
+
+        emit RewardsClaimed(holder, 1000);
 
         vm.prank(holder);
 
