@@ -5,8 +5,6 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
-    uint256 duration = 365 days;
-
     event RewardsClaimed(address indexed holder, uint256 amount);
 
     function testClaim_doesNottransferTokenFromContractToHolderWhenHolderHasNoRewards() public {
@@ -21,7 +19,7 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         rewardsToken.approve(address(poolContract), 1000);
 
-        poolContract.addRewards(1000, duration);
+        poolContract.addRewards(1000, 10);
 
         uint256 holderOriginalBalance = rewardsToken.balanceOf(holder);
         uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
@@ -46,12 +44,12 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         rewardsToken.approve(address(poolContract), 1000);
 
-        poolContract.addRewards(1000, duration);
+        poolContract.addRewards(1000, 10);
 
         uint256 holderOriginalBalance = rewardsToken.balanceOf(holder);
         uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
 
-        vm.warp(block.timestamp + duration / 2);
+        vm.warp(block.timestamp + 5);
 
         vm.prank(holder);
 
@@ -60,7 +58,7 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance + 500);
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 500);
 
-        vm.warp(block.timestamp + duration / 2);
+        vm.warp(block.timestamp + 5);
 
         vm.prank(holder);
 
