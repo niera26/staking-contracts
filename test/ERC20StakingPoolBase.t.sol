@@ -23,11 +23,13 @@ contract ERC20Mock is ERC20 {
 contract ERC20StakingPoolBaseTest is Test {
     IERC20Metadata internal stakingToken;
     IERC20Metadata internal rewardsToken;
+    IERC20Metadata internal randomToken;
     ERC20StakingPool internal poolContract;
 
     function setUp() public {
         stakingToken = new ERC20Mock("Staking Token", "STT", 18);
-        rewardsToken = new ERC20Mock("Rewards Token", "RWD", 6);
+        rewardsToken = new ERC20Mock("Rewards Token", "RWT", 6);
+        randomToken = new ERC20Mock("Random token", "RDT", 18);
         poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken));
     }
 }
