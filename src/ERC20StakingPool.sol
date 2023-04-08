@@ -32,14 +32,13 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
 
     // constants used for the computation.
     // scales allow to normalize both tokens to 18 decimals.
-    uint256 private constant precision = 10 ** 18;
+    uint256 private constant precision = 1e18;
     uint256 private immutable stakingScale;
     uint256 private immutable rewardsScale;
 
     // some constant for max distribution amount and duration.
-    uint256 public immutable maxRewardsAmount;
-    uint256 public immutable maxRewardsDuration = 365 days;
-    uint256 private constant maxRewardsBaseAmount = 1_000_000_000;
+    uint256 public constant maxRewardsAmount = 1_000_000_000 * 1e18;
+    uint256 public constant maxRewardsDuration = 365 days;
 
     // map address to stake data.
     mapping(address => StakeData) private addressToStakeData;
@@ -81,8 +80,6 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
 
         stakingScale = 10 ** (18 - stakingTokenDecimals);
         rewardsScale = 10 ** (18 - rewardTokenDecimals);
-
-        maxRewardsAmount = maxRewardsBaseAmount * (10 ** rewardTokenDecimals);
     }
 
     /**
@@ -103,7 +100,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
      * Amount of rewards remaining to distribute.
      */
     function remainingRewards() external view returns (uint256) {
-        return _remainingRewards(1);
+        return _remainingRewards() / rewardsScale;
     }
 
     /**
@@ -205,7 +202,9 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     function addRewards(uint256 amount, uint256 duration) external onlyOwner {
         if (amount == 0) revert ZeroAmount();
         if (duration == 0) revert ZeroDuration();
-        if (amount > maxRewardsAmount) revert RewardsAmountTooLarge(maxRewardsAmount, amount);
+        if (amount * rewardsScale > maxRewardsAmount) {
+            revert RewardsAmountTooLarge(maxRewardsAmount / rewardsScale, amount);
+        }
         if (duration > maxRewardsDuration) revert RewardsDurationTooLarge(maxRewardsDuration, duration);
 
         _updateTotalRewards(amount, duration);
@@ -250,51 +249,36 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * Make sure the given timestamp is within last distribution starting and ending time.
+     * Make sure the given timestamp is not greater than last distribution ending time.
      */
-    function _cappedByDistributionTime(uint256 timestamp) internal view returns (uint256) {
-        if (timestamp < lastDistributionStartingTime) return lastDistributionStartingTime;
-        if (timestamp > lastDistributionEndingTime) return lastDistributionEndingTime;
-        return timestamp;
+    function _cappedByEndingTime(uint256 timestamp) internal view returns (uint256) {
+        return timestamp < lastDistributionEndingTime ? timestamp : lastDistributionEndingTime;
     }
 
     /**
-     * Elapsed seconds since the start of the last distribution.
+     * Amount of rewards for the given duration.
+     * Doing this way causes less dust than a rewards rate.
      */
-    function _elapsedSeconds() internal view returns (uint256) {
-        return _cappedByDistributionTime(block.timestamp) - lastDistributionStartingTime;
-    }
-
-    /**
-     * Remaining seconds since the start of the last distribution.
-     */
-    function _remainingSeconds() internal view returns (uint256) {
-        return lastDistributionEndingTime - _cappedByDistributionTime(block.timestamp);
-    }
-
-    /**
-     * Amount of rewards for the given number of seconds.
-     *
-     * I think it is easier to understand than a rewards rate.
-     */
-    function _rewardAmountFor(uint256 duration, uint256 _precision) internal view returns (uint256) {
+    function _rewardAmountFor(uint256 duration) internal view returns (uint256) {
         if (lastDistributionStartingTime >= lastDistributionEndingTime) return 0;
 
-        return (duration * lastRewardsAmount * _precision) / (lastDistributionEndingTime - lastDistributionStartingTime);
+        uint256 totalDuration = lastDistributionEndingTime - lastDistributionStartingTime;
+
+        return (duration * lastRewardsAmount) / totalDuration;
     }
 
     /**
      * Amount of rewards that has been distributed so far for the last distribution.
      */
-    function _distributedRewards(uint256 _precision) internal view returns (uint256) {
-        return _rewardAmountFor(_elapsedSeconds(), _precision);
+    function _distributedRewards() internal view returns (uint256) {
+        return _rewardAmountFor(_cappedByEndingTime(block.timestamp) - lastDistributionStartingTime);
     }
 
     /**
      * Amount of rewards yet to be distributed for the last distribution.
      */
-    function _remainingRewards(uint256 _precision) internal view returns (uint256) {
-        return _rewardAmountFor(_remainingSeconds(), _precision);
+    function _remainingRewards() internal view returns (uint256) {
+        return _rewardAmountFor(lastDistributionEndingTime - _cappedByEndingTime(block.timestamp));
     }
 
     /**
@@ -306,10 +290,9 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
             return rewardsPerTokenAcc;
         }
 
-        uint256 numerator = _distributedRewards(rewardsScale * precision);
-        uint256 denominator = stakedAmountStored * stakingScale;
+        uint256 distributedRewards = _distributedRewards() * precision;
 
-        return rewardsPerTokenAcc + (numerator / denominator);
+        return rewardsPerTokenAcc + (distributedRewards / (stakedAmountStored * stakingScale));
     }
 
     /**
@@ -317,10 +300,10 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
      */
     function _pendingRewards(StakeData memory stakeData) internal view returns (uint256) {
         uint256 rewardsPerToken = _rewardsPerToken() - stakeData.lastRewardsPerToken;
-        uint256 numerator = rewardsPerToken * stakeData.amount * stakingScale;
-        uint256 denominator = rewardsScale * precision;
 
-        return stakeData.earned + (numerator / denominator);
+        uint256 stakeRewards = rewardsPerToken * stakeData.amount * stakingScale;
+
+        return stakeData.earned + (stakeRewards / (rewardsScale * precision));
     }
 
     /**
@@ -346,8 +329,8 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
         rewardsPerTokenAcc = _rewardsPerToken();
 
         stakedAmountStored = amount;
-        lastRewardsAmount = _remainingRewards(1);
-        lastDistributionStartingTime = _cappedByDistributionTime(block.timestamp);
+        lastRewardsAmount = _remainingRewards();
+        lastDistributionStartingTime = _cappedByEndingTime(block.timestamp);
     }
 
     /**
@@ -361,8 +344,12 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
         rewardsPerTokenAcc = _rewardsPerToken();
 
         rewardAmountStored += amount;
-        lastRewardsAmount = _remainingRewards(1) + amount;
+        lastRewardsAmount = _remainingRewards() + (amount * rewardsScale);
         lastDistributionStartingTime = block.timestamp;
         lastDistributionEndingTime = block.timestamp + duration;
+
+        // should never happend but why not.
+        assert(lastRewardsAmount <= type(uint256).max / duration);
+        assert(lastRewardsAmount <= type(uint256).max / precision);
     }
 }
