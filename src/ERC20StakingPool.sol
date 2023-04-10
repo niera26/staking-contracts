@@ -30,6 +30,10 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     uint256 private lastDistributionStartingTime;
     uint256 private lastDistributionEndingTime;
 
+    // remaining rewards when there is no staker.
+    // thiw value can be sweept by the owner of the contract.
+    uint256 private undistributedRewards;
+
     // constants used for the computation.
     // scales allow to normalize both tokens to 18 decimals.
     uint256 private constant precision = 1e18;
@@ -252,6 +256,17 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
+     * Allow owner to sweep undistributed rewards when everyone unstaked.
+     */
+    function sweepUndistributed() external onlyOwner {
+        uint256 scaledUndistributedRewards = undistributedRewards / rewardsScale;
+
+        rewardAmountStored -= scaledUndistributedRewards;
+
+        rewardToken.safeTransfer(msg.sender, scaledUndistributedRewards);
+    }
+
+    /**
      * Make sure the given timestamp is not greater than last distribution ending time.
      */
     function _cappedByEndingTime(uint256 timestamp) internal view returns (uint256) {
@@ -326,6 +341,9 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
      * to end of last distribution. Starting time is capped by ending time so start time is
      * never greater than ending time.
      *
+     * When there's not more stake, remaining rewards are accumulated in undistributed
+     * rewards so owner can sweep it later.
+     *
      * It *must* be used to change the amount tokens staked in the pool.
      */
     function _updateTotalStaked(uint256 amount) internal {
@@ -334,6 +352,11 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
         stakedAmountStored = amount;
         lastRewardsAmount = _remainingRewards();
         lastDistributionStartingTime = _cappedByEndingTime(block.timestamp);
+
+        if (stakedAmountStored == 0) {
+            undistributedRewards += lastRewardsAmount;
+            lastDistributionStartingTime = lastDistributionEndingTime;
+        }
     }
 
     /**
