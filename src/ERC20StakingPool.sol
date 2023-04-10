@@ -58,6 +58,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     event RewardsClaimed(address indexed holder, uint256 amount);
 
     // custom errors.
+    error ZeroStake();
     error ZeroAmount();
     error ZeroDuration();
     error TooMuchDecimals(address token, uint8 decimals);
@@ -202,9 +203,11 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     function addRewards(uint256 amount, uint256 duration) external onlyOwner {
         if (amount == 0) revert ZeroAmount();
         if (duration == 0) revert ZeroDuration();
-        if (amount * rewardsScale > maxRewardsAmount) {
-            revert RewardsAmountTooLarge(maxRewardsAmount / rewardsScale, amount);
-        }
+        if (stakedAmountStored == 0) revert ZeroStake();
+
+        uint256 maxRewardsAmountScaled = maxRewardsAmount / rewardsScale;
+
+        if (amount > maxRewardsAmountScaled) revert RewardsAmountTooLarge(maxRewardsAmountScaled, amount);
         if (duration > maxRewardsDuration) revert RewardsDurationTooLarge(maxRewardsDuration, duration);
 
         _updateTotalRewards(amount, duration);

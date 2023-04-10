@@ -68,6 +68,15 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
     }
 
     function testSweep_transfersRewardsTokenToOwnerUpToTotalRewards() public {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, 1000);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), 1000);
+        poolContract.stake(1000);
+        vm.stopPrank();
+
         rewardsToken.approve(address(poolContract), 1000);
 
         poolContract.addRewards(1000, 10);

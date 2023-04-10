@@ -13,7 +13,19 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         rewardsToken.transfer(recipient, rewardsToken.totalSupply() - amount);
     }
 
+    function addStake(uint256 amount) private {
+        address holder = vm.addr(1);
+
+        stakingToken.transfer(holder, amount);
+
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), amount);
+        poolContract.stake(amount);
+        vm.stopPrank();
+    }
+
     function testAddRewards_allowsToAddExactOwnerBalance() public {
+        addStake(1000);
         setOwnerBalanceTo(1000);
 
         uint256 originalTotalRewards = poolContract.totalRewards();
@@ -26,6 +38,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_allowsToAddExactMaxRewardsAmount() public {
+        addStake(1000);
+
         uint256 amount = poolContract.maxRewardsAmount() / (10 ** (18 - rewardsToken.decimals()));
 
         uint256 originalTotalRewards = poolContract.totalRewards();
@@ -38,6 +52,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_allowsToAddExactMaxRewardsDuration() public {
+        addStake(1000);
+
         uint256 duration = poolContract.maxRewardsDuration();
 
         uint256 originalTotalRewards = poolContract.totalRewards();
@@ -50,6 +66,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_increasesTotalRewards() public {
+        addStake(1000);
+
         uint256 originalTotalRewards = poolContract.totalRewards();
 
         rewardsToken.approve(address(poolContract), 500);
@@ -68,6 +86,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_increasesRemainingRewards() public {
+        addStake(1000);
+
         uint256 originalRemainingRewards = poolContract.totalRewards();
 
         rewardsToken.approve(address(poolContract), 500);
@@ -86,6 +106,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_updatesEndOfDistribution() public {
+        addStake(1000);
+
         rewardsToken.approve(address(poolContract), 500);
 
         poolContract.addRewards(500, 10);
@@ -102,6 +124,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsCallerIsNotTheOwner() public {
+        addStake(1000);
+
         address sender = vm.addr(1);
 
         rewardsToken.approve(address(poolContract), 1000);
@@ -114,12 +138,16 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsZeroAmount() public {
+        addStake(1000);
+
         vm.expectRevert(ERC20StakingPool.ZeroAmount.selector);
 
         poolContract.addRewards(0, 10);
     }
 
     function testAddRewards_revertsZeroDuration() public {
+        addStake(1000);
+
         rewardsToken.approve(address(poolContract), 1000);
 
         vm.expectRevert(ERC20StakingPool.ZeroDuration.selector);
@@ -127,7 +155,17 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         poolContract.addRewards(1000, 0);
     }
 
+    function testAddRewards_revertsZeroStake() public {
+        rewardsToken.approve(address(poolContract), 1000);
+
+        vm.expectRevert(ERC20StakingPool.ZeroStake.selector);
+
+        poolContract.addRewards(1000, 10);
+    }
+
     function testAddRewards_revertsRewardsAmountTooLarge() public {
+        addStake(1000);
+
         uint256 amount = poolContract.maxRewardsAmount() / (10 ** (18 - rewardsToken.decimals()));
 
         rewardsToken.approve(address(poolContract), amount + 1);
@@ -138,6 +176,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsRewardsDurationTooLarge() public {
+        addStake(1000);
+
         uint256 duration = poolContract.maxRewardsDuration();
 
         rewardsToken.approve(address(poolContract), 1000);
@@ -150,6 +190,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsInsufficientAllowance() public {
+        addStake(1000);
+
         rewardsToken.approve(address(poolContract), 999);
 
         vm.expectRevert("ERC20: insufficient allowance");
@@ -158,6 +200,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsInsufficientBalance() public {
+        addStake(1000);
+
         setOwnerBalanceTo(1000);
 
         rewardsToken.approve(address(poolContract), 1001);
