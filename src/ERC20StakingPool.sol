@@ -264,6 +264,9 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
         rewardAmountStored -= scaledUndistributedRewards;
 
         rewardToken.safeTransfer(msg.sender, scaledUndistributedRewards);
+
+        assert(stakingToken.balanceOf(address(this)) >= stakedAmountStored);
+        assert(rewardToken.balanceOf(address(this)) >= rewardAmountStored);
     }
 
     /**
@@ -341,8 +344,8 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
      * to end of last distribution. Starting time is capped by ending time so start time is
      * never greater than ending time.
      *
-     * When there's not more stake, remaining rewards are accumulated in undistributed
-     * rewards so owner can sweep it later.
+     * When there's not more stake, stop the distribution and keep the undistributed rewards
+     * so owner can sweep it later.
      *
      * It *must* be used to change the amount tokens staked in the pool.
      */
