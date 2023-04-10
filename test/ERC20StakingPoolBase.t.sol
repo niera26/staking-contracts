@@ -32,4 +32,30 @@ contract ERC20StakingPoolBaseTest is Test {
         randomToken = new ERC20Mock("Random token", "RDT", 18);
         poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken));
     }
+
+    function stake(address holder, uint256 amount) internal {
+        stakingToken.transfer(holder, amount);
+        vm.startPrank(holder);
+        stakingToken.approve(address(poolContract), amount);
+        poolContract.stake(amount);
+        vm.stopPrank();
+    }
+
+    function unstake(address holder, uint256 amount) internal {
+        vm.prank(holder);
+
+        poolContract.unstake(amount);
+    }
+
+    function addRewards(uint256 amount, uint256 duration) internal {
+        rewardsToken.approve(address(poolContract), amount);
+
+        poolContract.addRewards(amount, duration);
+    }
+
+    function claim(address holder) internal {
+        vm.prank(holder);
+
+        poolContract.claim();
+    }
 }

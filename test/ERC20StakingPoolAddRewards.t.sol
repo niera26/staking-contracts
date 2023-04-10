@@ -13,118 +13,90 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         rewardsToken.transfer(recipient, rewardsToken.totalSupply() - amount);
     }
 
-    function addStake(uint256 amount) private {
-        address holder = vm.addr(1);
-
-        stakingToken.transfer(holder, amount);
-
-        vm.startPrank(holder);
-        stakingToken.approve(address(poolContract), amount);
-        poolContract.stake(amount);
-        vm.stopPrank();
-    }
-
     function testAddRewards_allowsToAddExactOwnerBalance() public {
-        addStake(1000);
         setOwnerBalanceTo(1000);
+
+        stake(vm.addr(1), 1000);
 
         uint256 originalTotalRewards = poolContract.totalRewards();
 
-        rewardsToken.approve(address(poolContract), 1000);
-
-        poolContract.addRewards(1000, 10);
+        addRewards(1000, 10);
 
         assertEq(poolContract.totalRewards(), originalTotalRewards + 1000);
     }
 
     function testAddRewards_allowsToAddExactMaxRewardsAmount() public {
-        addStake(1000);
+        stake(vm.addr(1), 1000);
 
         uint256 amount = poolContract.maxRewardsAmount() / (10 ** (18 - rewardsToken.decimals()));
 
         uint256 originalTotalRewards = poolContract.totalRewards();
 
-        rewardsToken.approve(address(poolContract), amount);
-
-        poolContract.addRewards(amount, 10);
+        addRewards(amount, 10);
 
         assertEq(poolContract.totalRewards(), originalTotalRewards + amount);
     }
 
     function testAddRewards_allowsToAddExactMaxRewardsDuration() public {
-        addStake(1000);
+        stake(vm.addr(1), 1000);
 
         uint256 duration = poolContract.maxRewardsDuration();
 
         uint256 originalTotalRewards = poolContract.totalRewards();
 
-        rewardsToken.approve(address(poolContract), 1000);
-
-        poolContract.addRewards(1000, duration);
+        addRewards(1000, duration);
 
         assertEq(poolContract.totalRewards(), originalTotalRewards + 1000);
     }
 
     function testAddRewards_increasesTotalRewards() public {
-        addStake(1000);
+        stake(vm.addr(1), 1000);
 
         uint256 originalTotalRewards = poolContract.totalRewards();
 
-        rewardsToken.approve(address(poolContract), 500);
-
-        poolContract.addRewards(500, 10);
+        addRewards(500, 10);
 
         assertEq(poolContract.totalRewards(), originalTotalRewards + 500);
 
         vm.warp(block.timestamp + 5);
 
-        rewardsToken.approve(address(poolContract), 500);
-
-        poolContract.addRewards(500, 10);
+        addRewards(500, 10);
 
         assertEq(poolContract.totalRewards(), originalTotalRewards + 1000);
     }
 
     function testAddRewards_increasesRemainingRewards() public {
-        addStake(1000);
+        stake(vm.addr(1), 1000);
 
         uint256 originalRemainingRewards = poolContract.totalRewards();
 
-        rewardsToken.approve(address(poolContract), 500);
-
-        poolContract.addRewards(500, 10);
+        addRewards(500, 10);
 
         assertEq(poolContract.remainingRewards(), originalRemainingRewards + 500);
 
         vm.warp(block.timestamp + 5);
 
-        rewardsToken.approve(address(poolContract), 500);
-
-        poolContract.addRewards(500, 10);
+        addRewards(500, 10);
 
         assertEq(poolContract.remainingRewards(), originalRemainingRewards + 750);
     }
 
     function testAddRewards_updatesEndOfDistribution() public {
-        addStake(1000);
+        stake(vm.addr(1), 1000);
 
-        rewardsToken.approve(address(poolContract), 500);
-
-        poolContract.addRewards(500, 10);
+        addRewards(500, 10);
 
         assertEq(poolContract.endOfDistribution(), block.timestamp + 10);
 
         vm.warp(block.timestamp + 5);
 
-        rewardsToken.approve(address(poolContract), 500);
-
-        poolContract.addRewards(500, 20);
+        addRewards(500, 20);
 
         assertEq(poolContract.endOfDistribution(), block.timestamp + 20);
     }
 
     function testAddRewards_revertsCallerIsNotTheOwner() public {
-        addStake(1000);
+        stake(vm.addr(1), 1000);
 
         address sender = vm.addr(1);
 
@@ -138,7 +110,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsZeroAmount() public {
-        addStake(1000);
+        stake(vm.addr(1), 1000);
 
         vm.expectRevert(ERC20StakingPool.ZeroAmount.selector);
 
@@ -146,7 +118,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsZeroDuration() public {
-        addStake(1000);
+        stake(vm.addr(1), 1000);
 
         rewardsToken.approve(address(poolContract), 1000);
 
@@ -164,7 +136,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsRewardsAmountTooLarge() public {
-        addStake(1000);
+        stake(vm.addr(1), 1000);
 
         uint256 amount = poolContract.maxRewardsAmount() / (10 ** (18 - rewardsToken.decimals()));
 
@@ -176,7 +148,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsRewardsDurationTooLarge() public {
-        addStake(1000);
+        stake(vm.addr(1), 1000);
 
         uint256 duration = poolContract.maxRewardsDuration();
 
@@ -190,7 +162,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsInsufficientAllowance() public {
-        addStake(1000);
+        stake(vm.addr(1), 1000);
 
         rewardsToken.approve(address(poolContract), 999);
 
@@ -200,9 +172,9 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsInsufficientBalance() public {
-        addStake(1000);
-
         setOwnerBalanceTo(1000);
+
+        stake(vm.addr(1), 1000);
 
         rewardsToken.approve(address(poolContract), 1001);
 

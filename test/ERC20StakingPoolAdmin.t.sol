@@ -47,49 +47,35 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
     }
 
     function testSweep_transfersStakingTokenToOwnerUpToTotalStaked() public {
-        address holder = vm.addr(1);
-
-        stakingToken.transfer(holder, 1000);
-
-        vm.startPrank(holder);
-        stakingToken.approve(address(poolContract), 1000);
-        poolContract.stake(1000);
-        vm.stopPrank();
+        stake(vm.addr(1), 1000);
 
         stakingToken.transfer(address(poolContract), 10000);
 
         uint256 ownerOriginalBalance = stakingToken.balanceOf(address(this));
+        uint256 contractOriginalBalance = stakingToken.balanceOf(address(poolContract));
 
         poolContract.sweep(address(stakingToken));
 
         assertEq(poolContract.totalStaked(), 1000);
-        assertEq(stakingToken.balanceOf(address(poolContract)), 1000);
         assertEq(stakingToken.balanceOf(address(this)), ownerOriginalBalance + 10000);
+        assertEq(stakingToken.balanceOf(address(poolContract)), contractOriginalBalance - 10000);
     }
 
     function testSweep_transfersRewardsTokenToOwnerUpToTotalRewards() public {
-        address holder = vm.addr(1);
+        stake(vm.addr(1), 1000);
 
-        stakingToken.transfer(holder, 1000);
-
-        vm.startPrank(holder);
-        stakingToken.approve(address(poolContract), 1000);
-        poolContract.stake(1000);
-        vm.stopPrank();
-
-        rewardsToken.approve(address(poolContract), 1000);
-
-        poolContract.addRewards(1000, 10);
+        addRewards(1000, 10);
 
         rewardsToken.transfer(address(poolContract), 10000);
 
         uint256 ownerOriginalBalance = rewardsToken.balanceOf(address(this));
+        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
 
         poolContract.sweep(address(rewardsToken));
 
         assertEq(poolContract.totalRewards(), 1000);
-        assertEq(rewardsToken.balanceOf(address(poolContract)), 1000);
         assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance + 10000);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 10000);
     }
 
     function testSweep_revertsCallerIsNotTheOwner() public {
