@@ -62,8 +62,6 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
     }
 
     function testSweep_transfersRewardsTokenToOwnerUpToTotalRewards() public {
-        stake(vm.addr(1), 1000);
-
         addRewards(1000, 10);
 
         rewardsToken.transfer(address(poolContract), 10000);
@@ -76,35 +74,6 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
         assertEq(poolContract.totalRewards(), 1000);
         assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance + 10000);
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 10000);
-    }
-
-    function testSweepUndistributed_transfersUndistributedRewardsToOwner() public {
-        address holder = vm.addr(1);
-
-        stake(holder, 1000);
-
-        addRewards(1000, 10);
-
-        vm.warp(block.timestamp + 5);
-
-        unstake(holder, 1000);
-
-        stake(holder, 1000);
-
-        addRewards(1000, 10);
-
-        vm.warp(block.timestamp + 5);
-
-        unstake(holder, 1000);
-
-        uint256 ownerOriginalBalance = rewardsToken.balanceOf(address(this));
-        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
-
-        poolContract.sweepUndistributed();
-
-        assertEq(poolContract.totalRewards(), 0);
-        assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance + 1000);
-        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 1000);
     }
 
     function testSweep_revertsCallerIsNotTheOwner() public {

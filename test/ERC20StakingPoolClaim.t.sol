@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
-    event RewardsClaimed(address indexed holder, uint256 amount);
+    event RewardsClaimed(address indexed addr, uint256 amount);
 
     function testClaim_doesNotReduceTotalRewardsWhenHolderHasNoReward() public {
         address holder = vm.addr(1);
