@@ -69,14 +69,14 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         assertEq(poolContract.remainingRewards(), originalRemainingRewards + 1000);
     }
 
-    function testAddRewards_updatesEndOfDistribution() public {
+    function testAddRewards_updatesRemainingSeconds() public {
         addRewards(500, 10);
 
-        assertEq(poolContract.endOfDistribution(), block.timestamp + 10);
+        assertEq(poolContract.remainingSeconds(), 10);
 
         addRewards(500, 20);
 
-        assertEq(poolContract.endOfDistribution(), block.timestamp + 30);
+        assertEq(poolContract.remainingSeconds(), 30);
     }
 
     function testAddRewards_revertsCallerIsNotTheOwner() public {

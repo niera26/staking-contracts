@@ -91,7 +91,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * Current number of rewards token stored in the pool (going in addRewards and out of claim)
+     * Current number of rewards token stored in the pool (going in addRewards and out of removeRewards/claim)
      */
     function totalRewards() external view returns (uint256) {
         return rewardAmountStored;
@@ -101,21 +101,14 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
      * Amount of rewards remaining to distribute.
      */
     function remainingRewards() external view returns (uint256) {
-        return _remainingRewards() / rewardsScale;
+        return _remainingRewards();
     }
 
     /**
-     * Return whether the rewards are being distributed.
+     * Time remaining for this distribution.
      */
-    function isDistributing() external view returns (bool) {
-        return stakedAmountStored > 0 && _remainingRewards() > 0;
-    }
-
-    /**
-     * Timestamp of when distribution ends.
-     */
-    function endOfDistribution() external view returns (uint256) {
-        return distributionEndingTime;
+    function remainingSeconds() external view returns (uint256) {
+        return _remainingSeconds();
     }
 
     /**
@@ -150,7 +143,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     /**
      * Remove tokens from the stake of the holder.
      *
-     * If Everything is unstaked, automatically claim the rewards.
+     * Automatically claim the rewards when everything is unstaked.
      */
     function unstake(uint256 amount) external nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
@@ -162,9 +155,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
         _earnRewards(stakeData);
         _decreaseTotalStaked(stakeData, amount);
 
-        if (stakeData.amount == 0) {
-            _claimEarnedRewards(stakeData);
-        }
+        if (stakeData.amount == 0) _claimEarnedRewards(stakeData);
 
         assert(stakingToken.balanceOf(address(this)) >= stakedAmountStored);
         assert(rewardToken.balanceOf(address(this)) >= rewardAmountStored);
@@ -190,9 +181,9 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
         if (amount == 0) revert ZeroAmount();
         if (duration == 0) revert ZeroDuration();
 
-        uint256 maxRewardsAmountScaled = maxRewardsAmount / rewardsScale;
+        uint256 scaledMaxRewardsAmount = maxRewardsAmount / rewardsScale;
 
-        if (amount > maxRewardsAmountScaled) revert RewardsAmountTooLarge(maxRewardsAmountScaled, amount);
+        if (amount > scaledMaxRewardsAmount) revert RewardsAmountTooLarge(scaledMaxRewardsAmount, amount);
         if (duration > maxRewardsDuration) revert RewardsDurationTooLarge(maxRewardsDuration, duration);
 
         _addRewards(amount, duration);
@@ -243,53 +234,56 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * Make sure the given timestamp is not greater than last distribution ending time.
-     */
-    function _cappedByEndingTime(uint256 timestamp) internal view returns (uint256) {
-        return timestamp < distributionEndingTime ? timestamp : distributionEndingTime;
-    }
-
-    /**
-     * Returns the duration of the current distribution.
+     * The duration of the current distribution.
      */
     function _duration() internal view returns (uint256) {
-        return distributionEndingTime - _cappedByEndingTime(distributionStartingTime);
+        if (distributionStartingTime > distributionEndingTime) return 0;
+
+        return distributionEndingTime - distributionStartingTime;
     }
 
     /**
-     * Amount of rewards for the given duration.
-     * Doing this way causes less dust than a rewards rate.
+     * The number of seconds until the end of the distribution.
      */
-    function _rewardAmountFor(uint256 duration) internal view returns (uint256) {
-        uint256 totalDuration = _duration();
+    function _remainingSeconds() internal view returns (uint256) {
+        if (distributionEndingTime < block.timestamp) return 0;
 
-        return totalDuration == 0 ? 0 : (duration * rewardsAmount) / totalDuration;
+        return distributionEndingTime - block.timestamp;
     }
 
     /**
-     * Amount of rewards that has been distributed so far for the current distribution.
-     */
-    function _distributedRewards() internal view returns (uint256) {
-        return _rewardAmountFor(_cappedByEndingTime(block.timestamp) - distributionStartingTime);
-    }
-
-    /**
-     * Amount of rewards yet to be distributed for the current distribution.
+     * Amount of rewards remaining to be distributed for the current distribution.
      */
     function _remainingRewards() internal view returns (uint256) {
-        return _rewardAmountFor(distributionEndingTime - _cappedByEndingTime(block.timestamp));
+        uint256 duration = _duration();
+
+        if (duration == 0) return 0;
+
+        return (_remainingSeconds() * rewardsAmount) / duration;
     }
 
     /**
      * The number of rewards per staked token.
      * Increases every second until end of current distribution.
+     * Doing all computations here to be as precise as possible.
      */
     function _rewardsPerToken() internal view returns (uint256) {
         if (stakedAmountStored == 0) return rewardsPerTokenAcc;
 
-        uint256 distributedRewards = _distributedRewards() * precision;
+        uint256 duration = _duration();
 
-        return rewardsPerTokenAcc + (distributedRewards / (stakedAmountStored * stakingScale));
+        if (duration == 0) return rewardsPerTokenAcc;
+
+        uint256 total = rewardsAmount * _duration();
+        uint256 remaining = rewardsAmount * _remainingSeconds();
+
+        if (total < remaining) return rewardsPerTokenAcc;
+
+        uint256 distributed = total - remaining;
+        uint256 scaledStakedAmount = stakedAmountStored * stakingScale * duration;
+        uint256 scaledDistributedRewards = distributed * rewardsScale * precision;
+
+        return rewardsPerTokenAcc + (scaledDistributedRewards / scaledStakedAmount);
     }
 
     /**
@@ -314,30 +308,30 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * Starts a new distribution.
-     * Accumulates the current rewards per tokens.
-     * If theres no staked tokens, translate the last distribution times to now.
-     * If theres staked tokens, starts a new distribution with the remaining rewards.
+     * Starts a new distribution from now.
+     * - First accumulates the current rewards per tokens.
+     * - When the distribution is not active (= there is no token staked) just keep the same
+     *   rewards amount and duration and translate start and stop to now.
+     * - When the distribution is active (= there is staked tokens) then start a new distribution
+     *   starting now with remaining rewards and remaining seconds.
      */
     function _startNewDistribution() internal {
         rewardsPerTokenAcc = _rewardsPerToken();
 
-        if (stakedAmountStored == 0) {
-            // translate any unfinished distribution to now.
-            uint256 duration = _duration();
-            distributionStartingTime = block.timestamp;
-            distributionEndingTime = block.timestamp + duration;
-        } else {
-            // distribute the remaining rewards from now to end of distribution.
-            rewardsAmount = _remainingRewards();
-            distributionStartingTime = _cappedByEndingTime(block.timestamp);
-        }
+        bool isActive = stakedAmountStored > 0;
+
+        if (isActive) rewardsAmount = _remainingRewards();
+
+        uint256 duration = isActive ? _remainingSeconds() : _duration();
+
+        distributionStartingTime = block.timestamp;
+        distributionEndingTime = block.timestamp + duration;
     }
 
     /**
      * Starts a new distribution and increase the total amount of staked tokens.
      *
-     * It *must* be used to increase the amount tokens staked in the pool.
+     * It *must* be used to add staking tokens to the pool.
      */
     function _increaseTotalStaked(StakeData storage stakeData, uint256 amount) internal {
         _startNewDistribution();
@@ -346,12 +340,17 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
         stakeData.amount += amount;
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
         emit TokenStacked(msg.sender, amount);
+
+        // should never happend but why not make sure.
+        uint256 totalDuration = _duration();
+
+        assert(totalDuration == 0 || stakedAmountStored <= (type(uint256).max / (stakingScale * totalDuration)));
     }
 
     /**
      * Starts a new distribution and increase the total amount of staked tokens.
      *
-     * It *must* be used to increase the amount tokens staked in the pool.
+     * It *must* be used to remove staking tokens from the pool.
      */
     function _decreaseTotalStaked(StakeData storage stakeData, uint256 amount) internal {
         _startNewDistribution();
@@ -370,16 +369,17 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     function _addRewards(uint256 amount, uint256 duration) internal {
         _startNewDistribution();
 
-        rewardsAmount += (amount * rewardsScale);
+        rewardsAmount += amount;
         distributionEndingTime += duration;
 
         rewardAmountStored += amount;
         rewardToken.safeTransferFrom(msg.sender, address(this), amount);
         emit RewardsAdded(amount, duration);
 
-        // should never happend but why not.
-        assert(rewardsAmount <= (type(uint256).max / duration));
-        assert(rewardsAmount <= (type(uint256).max / precision));
+        // should never happend but why not make sure.
+        uint256 totalDuration = _duration();
+
+        assert(totalDuration == 0 || rewardsAmount <= (type(uint256).max / (rewardsScale * totalDuration * precision)));
     }
 
     /**
@@ -390,7 +390,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard {
     function _removeRewards() internal {
         _startNewDistribution();
 
-        uint256 amount = rewardsAmount / rewardsScale;
+        uint256 amount = rewardsAmount;
 
         if (amount > 0) {
             rewardsAmount = 0;
