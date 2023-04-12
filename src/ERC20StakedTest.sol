@@ -15,7 +15,7 @@ contract ERC20StakedTest is ERC20 {
     function mint(uint256 amount) external {
         _mint(msg.sender, amount);
 
-        minters.push(msg.sender);
+        _addToMinterList(msg.sender);
     }
 
     function nbMinters() external view returns (uint256) {
@@ -26,5 +26,15 @@ contract ERC20StakedTest is ERC20 {
         require(i < minters.length, "minter index overflow");
 
         return minters[i];
+    }
+
+    function _addToMinterList(address addr) private {
+        bool found;
+
+        for (uint256 i; i < minters.length; i++) {
+            if (minters[i] == addr) found = true;
+        }
+
+        if (!found) minters.push(addr);
     }
 }
