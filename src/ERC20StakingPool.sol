@@ -20,7 +20,9 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard, ERC20StakingPoo
     /**
      * Call the base constructor with the two tokens.
      */
-    constructor(address _stakingToken, address _rewardToken) ERC20StakingPoolBase(_stakingToken, _rewardToken) {}
+    constructor(address _stakingToken, address _rewardToken)
+        ERC20StakingPoolBase(_stakingToken, _rewardToken, 1_000_000_000, 365 days)
+    {}
 
     /**
      * Current number of staked token stored in the pool (going in stake and out of unstake)

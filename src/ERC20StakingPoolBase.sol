@@ -37,9 +37,8 @@ abstract contract ERC20StakingPoolBase {
     uint256 private immutable rewardsScale;
 
     // some constant for max distribution amount and duration.
-    uint256 public constant maxRewardsAmountBase = 1_000_000_000;
-    uint256 public constant maxRewardsDuration = 365 days;
     uint256 public immutable maxRewardsAmount;
+    uint256 public immutable maxRewardsDuration;
 
     struct StakeData {
         uint256 amount; // amount of staked token.
@@ -59,7 +58,7 @@ abstract contract ERC20StakingPoolBase {
     /**
      * Both tokens must have decimals exposed.
      */
-    constructor(address _stakingToken, address _rewardToken) {
+    constructor(address _stakingToken, address _rewardToken, uint256 _maxRewardsAmount, uint256 _maxRewardsDuration) {
         uint8 stakingTokenDecimals = IERC20Metadata(_stakingToken).decimals();
         uint8 rewardTokenDecimals = IERC20Metadata(_rewardToken).decimals();
 
@@ -72,7 +71,8 @@ abstract contract ERC20StakingPoolBase {
         stakingScale = 10 ** (18 - stakingTokenDecimals);
         rewardsScale = 10 ** (18 - rewardTokenDecimals);
 
-        maxRewardsAmount = maxRewardsAmountBase * (10 ** rewardTokenDecimals);
+        maxRewardsAmount = _maxRewardsAmount * (10 ** rewardTokenDecimals);
+        maxRewardsDuration = _maxRewardsDuration;
     }
 
     /**
