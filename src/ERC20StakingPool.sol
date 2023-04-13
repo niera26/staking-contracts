@@ -119,7 +119,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard, ERC20StakingPoo
     function addRewards(uint256 amount, uint256 duration) external onlyOwner {
         if (amount == 0) revert ZeroAmount();
         if (duration == 0) revert ZeroDuration();
-        if (amount > _scaledMaxRewardsAmount()) revert RewardsAmountTooLarge(_scaledMaxRewardsAmount(), amount);
+        if (amount > maxRewardsAmount) revert RewardsAmountTooLarge(maxRewardsAmount, amount);
         if (duration > maxRewardsDuration) revert RewardsDurationTooLarge(maxRewardsDuration, duration);
 
         _addRewards(amount, duration);

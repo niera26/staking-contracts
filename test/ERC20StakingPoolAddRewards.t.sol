@@ -24,8 +24,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_allowsToAddExactMaxRewardsAmount() public {
-        uint256 amount = poolContract.maxRewardsAmount() / (10 ** (18 - rewardsToken.decimals()));
-
+        uint256 amount = poolContract.maxRewardsAmount();
+        console.log(amount);
         uint256 originalTotalRewards = poolContract.totalRewards();
 
         addRewards(amount, 10);
@@ -106,7 +106,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsRewardsAmountTooLarge() public {
-        uint256 amount = poolContract.maxRewardsAmount() / (10 ** (18 - rewardsToken.decimals()));
+        uint256 amount = poolContract.maxRewardsAmount();
 
         rewardsToken.approve(address(poolContract), amount + 1);
 

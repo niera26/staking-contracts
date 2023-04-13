@@ -37,8 +37,9 @@ abstract contract ERC20StakingPoolBase {
     uint256 private immutable rewardsScale;
 
     // some constant for max distribution amount and duration.
-    uint256 public constant maxRewardsAmount = 1_000_000_000 * 1e18;
+    uint256 public constant maxRewardsAmountBase = 1_000_000_000;
     uint256 public constant maxRewardsDuration = 365 days;
+    uint256 public immutable maxRewardsAmount;
 
     struct StakeData {
         uint256 amount; // amount of staked token.
@@ -70,13 +71,8 @@ abstract contract ERC20StakingPoolBase {
 
         stakingScale = 10 ** (18 - stakingTokenDecimals);
         rewardsScale = 10 ** (18 - rewardTokenDecimals);
-    }
 
-    /**
-     * Max rewards amount that canbe distributed at once.
-     */
-    function _scaledMaxRewardsAmount() internal view returns(uint256) {
-        return maxRewardsAmount / rewardsScale;
+        maxRewardsAmount = maxRewardsAmountBase * (10 ** rewardTokenDecimals);
     }
 
     /**
