@@ -2,6 +2,8 @@
 pragma solidity ^0.8.17;
 
 import "forge-std/Test.sol";
+import "../src/ERC20StakedTest.sol";
+import "../src/ERC20RewardTest.sol";
 import "../src/ERC20StakingPool.sol";
 import "openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -22,16 +24,17 @@ contract ERC20Mock is ERC20 {
 }
 
 contract ERC20StakingPoolBaseTest is Test {
-    IERC20Metadata internal stakingToken;
+    ERC20StakedTest internal stakingToken;
     IERC20Metadata internal rewardsToken;
     IERC20Metadata internal randomToken;
     ERC20StakingPool internal poolContract;
 
     function setUp() public {
-        stakingToken = new ERC20Mock("Staking Token", "STT", 18);
-        rewardsToken = new ERC20Mock("Rewards Token", "RWT", 6);
-        randomToken = new ERC20Mock("Random token", "RDT", 18);
+        stakingToken = new ERC20StakedTest();
+        rewardsToken = new ERC20RewardTest();
+        randomToken = new ERC20Mock("Random token", "RDTT", 18);
         poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken));
+        stakingToken.mint(1_000_000 * (10 ** stakingToken.decimals()));
     }
 
     function stake(address holder, uint256 amount) internal {
