@@ -9,10 +9,10 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
         poolContract.pause();
     }
 
-    function testPause_revertsCallerIsNotTheOwner() public {
+    function testPause_revertsCallerIsNotAdminRole() public {
         address sender = vm.addr(1);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(notAdminRoleErrorMessage(sender));
 
         vm.prank(sender);
 
@@ -24,12 +24,12 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
         poolContract.unpause();
     }
 
-    function testUnpause_revertsCallerIsNotTheOwner() public {
+    function testUnpause_revertsCallerIsNotAdminRole() public {
         address sender = vm.addr(1);
 
         poolContract.pause();
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(notAdminRoleErrorMessage(sender));
 
         vm.prank(sender);
 
@@ -76,10 +76,10 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 10000);
     }
 
-    function testSweep_revertsCallerIsNotTheOwner() public {
+    function testSweep_revertsCallerIsNotAdminRole() public {
         address sender = vm.addr(1);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(notAdminRoleErrorMessage(sender));
 
         vm.prank(sender);
 

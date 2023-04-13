@@ -2,14 +2,16 @@
 pragma solidity ^0.8.17;
 
 import {ERC20StakingPoolBase} from "./ERC20StakingPoolBase.sol";
+import {AccessControlEnumerable} from "openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import {IERC20} from "openzeppelin/contracts/interfaces/IERC20.sol";
-import {Ownable} from "openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "openzeppelin/contracts/security/Pausable.sol";
 import {ReentrancyGuard} from "openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {SafeERC20} from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard, ERC20StakingPoolBase {
+contract ERC20StakingPool is AccessControlEnumerable, Pausable, ReentrancyGuard, ERC20StakingPoolBase {
     using SafeERC20 for IERC20;
+
+    bytes32 public constant ADD_REWARDS_ROLE = keccak256("ADD_REWARDS_ROLE");
 
     error ZeroAmount();
     error ZeroDuration();
@@ -22,7 +24,10 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard, ERC20StakingPoo
      */
     constructor(address _stakingToken, address _rewardToken)
         ERC20StakingPoolBase(_stakingToken, _rewardToken, 1_000_000_000, 365 days)
-    {}
+    {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(ADD_REWARDS_ROLE, msg.sender);
+    }
 
     /**
      * Current number of staked token stored in the pool (going in stake and out of unstake)
@@ -118,7 +123,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard, ERC20StakingPoo
     /**
      * Add the given amount of rewards and distribute it over the given duration.
      */
-    function addRewards(uint256 amount, uint256 duration) external onlyOwner {
+    function addRewards(uint256 amount, uint256 duration) external onlyRole(ADD_REWARDS_ROLE) {
         if (amount == 0) revert ZeroAmount();
         if (duration == 0) revert ZeroDuration();
         if (amount > maxRewardsAmount) revert RewardsAmountTooLarge(maxRewardsAmount, amount);
@@ -133,7 +138,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard, ERC20StakingPoo
     /**
      * Remove currently distributed rewards from the pool and transfer it back to owner.
      */
-    function removeRewards() external onlyOwner {
+    function removeRewards() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _removeRewards();
 
         assert(stakingToken.balanceOf(address(this)) >= stakedAmountStored);
@@ -143,14 +148,14 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard, ERC20StakingPoo
     /**
      * Pause the contract.
      */
-    function pause() external onlyOwner {
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
     }
 
     /**
      * Unpause the contract.
      */
-    function unpause() external onlyOwner {
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 
@@ -158,7 +163,7 @@ contract ERC20StakingPool is Ownable, Pausable, ReentrancyGuard, ERC20StakingPoo
      * Allow owner to sweep any token accidently sent to this contract.
      * Staked token and rewards token can be sweeped up to the amount stored in the pool.
      */
-    function sweep(address token) external onlyOwner {
+    function sweep(address token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (token == address(stakingToken)) {
             stakingToken.safeTransfer(msg.sender, stakingToken.balanceOf(address(this)) - stakedAmountStored);
         } else if (token == address(rewardToken)) {

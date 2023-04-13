@@ -71,10 +71,10 @@ contract ERC20StakingPoolRemoveRewardsTest is ERC20StakingPoolBaseTest {
         poolContract.removeRewards();
     }
 
-    function testRemoveRewards_revertsCallerIsNotTheOwner() public {
+    function testRemoveRewards_revertsCallerIsNotAdminRole() public {
         address sender = vm.addr(1);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(notAdminRoleErrorMessage(sender));
 
         vm.prank(sender);
 

@@ -100,12 +100,38 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         addRewards(1000, 10);
     }
 
-    function testAddRewards_revertsCallerIsNotTheOwner() public {
+    function testAddRewards_allowsAddRewardsRoleToAddRewards() public {
+        address sender = vm.addr(1);
+
+        poolContract.grantRole(poolContract.ADD_REWARDS_ROLE(), sender);
+
+        uint256 originalTotalRewards = poolContract.totalRewards();
+
+        rewardsToken.transfer(sender, 500);
+
+        vm.startPrank(sender);
+        rewardsToken.approve(address(poolContract), 500);
+        addRewards(500, 10);
+        vm.stopPrank();
+
+        assertEq(poolContract.totalRewards(), originalTotalRewards + 500);
+
+        rewardsToken.transfer(sender, 500);
+
+        vm.startPrank(sender);
+        rewardsToken.approve(address(poolContract), 500);
+        addRewards(500, 10);
+        vm.stopPrank();
+
+        assertEq(poolContract.totalRewards(), originalTotalRewards + 1000);
+    }
+
+    function testAddRewards_revertsCallerIsNotAddRewardsRole() public {
         address sender = vm.addr(1);
 
         rewardsToken.approve(address(poolContract), 1000);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(notAddRewardsRoleErrorMessage(sender));
 
         vm.prank(sender);
 

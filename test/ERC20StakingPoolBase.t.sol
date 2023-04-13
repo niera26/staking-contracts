@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "../src/ERC20StakingPool.sol";
 import "openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin/contracts/utils/Strings.sol";
 
 contract ERC20Mock is ERC20 {
     uint8 private _decimals;
@@ -57,5 +58,27 @@ contract ERC20StakingPoolBaseTest is Test {
         vm.prank(holder);
 
         poolContract.claim();
+    }
+
+    function notAdminRoleErrorMessage(address sender) internal view returns (bytes memory) {
+        return bytes(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(sender),
+                " is missing role ",
+                Strings.toHexString(uint256(poolContract.DEFAULT_ADMIN_ROLE()), 32)
+            )
+        );
+    }
+
+    function notAddRewardsRoleErrorMessage(address sender) internal view returns (bytes memory) {
+        return bytes(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(sender),
+                " is missing role ",
+                Strings.toHexString(uint256(poolContract.ADD_REWARDS_ROLE()), 32)
+            )
+        );
     }
 }
