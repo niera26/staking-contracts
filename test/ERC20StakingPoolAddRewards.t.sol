@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
-    event RewardsAdded(address indexed addr, uint256 amount);
+    event RewardsAdded(uint256 amount, uint256 duration);
 
     function setOwnerBalanceTo(uint256 amount) private {
         address recipient = vm.addr(1);
@@ -25,7 +25,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
 
     function testAddRewards_allowsToAddExactMaxRewardsAmount() public {
         uint256 amount = poolContract.maxRewardsAmount();
-        console.log(amount);
+
         uint256 originalTotalRewards = poolContract.totalRewards();
 
         addRewards(amount, 10);
@@ -50,8 +50,6 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
 
         assertEq(poolContract.totalRewards(), originalTotalRewards + 500);
 
-        vm.warp(block.timestamp + 5);
-
         addRewards(500, 10);
 
         assertEq(poolContract.totalRewards(), originalTotalRewards + 1000);
@@ -69,7 +67,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         assertEq(poolContract.remainingRewards(), originalRemainingRewards + 1000);
     }
 
-    function testAddRewards_updatesRemainingSeconds() public {
+    function testAddRewards_increasesRemainingSeconds() public {
         addRewards(500, 10);
 
         assertEq(poolContract.remainingSeconds(), 10);
@@ -77,6 +75,29 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         addRewards(500, 20);
 
         assertEq(poolContract.remainingSeconds(), 30);
+    }
+
+    function testAddRewards_transfersRewardsFromOwnerToContract() public {
+        uint256 ownerOriginalBalance = rewardsToken.balanceOf(address(this));
+        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
+
+        addRewards(500, 10);
+
+        assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance - 500);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance + 500);
+
+        addRewards(500, 10);
+
+        assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance - 1000);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance + 1000);
+    }
+
+    function testAddRewards_emitsRewardsAdded() public {
+        vm.expectEmit(true, true, true, true, address(poolContract));
+
+        emit RewardsAdded(1000, 10);
+
+        addRewards(1000, 10);
     }
 
     function testAddRewards_revertsCallerIsNotTheOwner() public {
