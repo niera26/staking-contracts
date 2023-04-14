@@ -14,11 +14,11 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         addRewards(1000, 10);
 
-        uint256 originalTotalRewards = poolContract.totalRewards();
+        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
         claim(holder);
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored);
     }
 
     function testClaim_reducesTotalRewardsWhenHolderHasRewards() public {
@@ -28,13 +28,13 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         addRewards(1000, 10);
 
-        uint256 originalTotalRewards = poolContract.totalRewards();
+        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
         vm.warp(block.timestamp + 5);
 
         claim(holder);
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards - 500);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored - 500);
     }
 
     function testClaim_doesNotTransferTokenFromContractToHolderWhenHolderHasNoReward() public {

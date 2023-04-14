@@ -29,15 +29,15 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         stake(holder, 1000);
 
-        uint256 originalTotalStaked = poolContract.totalStaked();
+        uint256 originalStakedAmountStored = poolContract.stakedAmountStored();
 
         unstake(holder, 500);
 
-        assertEq(poolContract.totalStaked(), originalTotalStaked - 500);
+        assertEq(poolContract.stakedAmountStored(), originalStakedAmountStored - 500);
 
         unstake(holder, 500);
 
-        assertEq(poolContract.totalStaked(), originalTotalStaked - 1000);
+        assertEq(poolContract.stakedAmountStored(), originalStakedAmountStored - 1000);
     }
 
     function testUnstake_transfersTokensFromContractToHolder() public {
@@ -78,13 +78,13 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         addRewards(1000, 10);
 
-        uint256 originalTotalRewards = poolContract.totalRewards();
+        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
         vm.warp(block.timestamp + 5);
 
         unstake(holder, 500);
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored);
     }
 
     function testUnstakeAll_doesNotReduceTotalRewardsWhenHolderHasNoReward() public {
@@ -94,11 +94,11 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         addRewards(1000, 10);
 
-        uint256 originalTotalRewards = poolContract.totalRewards();
+        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
         unstake(holder, 1000);
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored);
     }
 
     function testUnstakeAll_reducesTotalRewardsWhenHolderHasRewards() public {
@@ -108,13 +108,13 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         addRewards(1000, 10);
 
-        uint256 originalTotalRewards = poolContract.totalRewards();
+        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
         vm.warp(block.timestamp + 5);
 
         unstake(holder, 1000);
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards - 500);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored - 500);
     }
 
     function testUnstakeSome_doesNotTransferTokenFromContractToHolder() public {

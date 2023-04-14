@@ -20,27 +20,15 @@ contract ERC20StakingPool is AccessControlEnumerable, Pausable, ReentrancyGuard,
     error InsufficientStakedAmount(uint256 staked, uint256 amount);
 
     /**
-     * Call the base constructor with the two tokens.
+     * Call the base constructor with the two tokens, the max rewards amount and max duration.
+     *
+     * Also grant the admin and add rewards roles to the deployer.
      */
     constructor(address _stakingToken, address _rewardToken)
         ERC20StakingPoolBase(_stakingToken, _rewardToken, 1_000_000_000, 365 days)
     {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADD_REWARDS_ROLE, msg.sender);
-    }
-
-    /**
-     * Current number of staked token stored in the pool (going in stake and out of unstake)
-     */
-    function totalStaked() external view returns (uint256) {
-        return stakedAmountStored;
-    }
-
-    /**
-     * Current number of rewards token stored in the pool (going in addRewards and out of removeRewards/claim)
-     */
-    function totalRewards() external view returns (uint256) {
-        return rewardAmountStored;
     }
 
     /**
@@ -51,7 +39,7 @@ contract ERC20StakingPool is AccessControlEnumerable, Pausable, ReentrancyGuard,
     }
 
     /**
-     * Time remaining for this distribution.
+     * Seconds remaining for this distribution.
      */
     function remainingSeconds() external view returns (uint256) {
         return _remainingSeconds();
@@ -82,8 +70,8 @@ contract ERC20StakingPool is AccessControlEnumerable, Pausable, ReentrancyGuard,
         _earnRewards(stakeData);
         _increaseTotalStaked(stakeData, amount);
 
-        assert(stakingToken.balanceOf(address(this)) >= stakedAmountStored);
-        assert(rewardToken.balanceOf(address(this)) >= rewardAmountStored);
+        assert(STAKING_TOKEN.balanceOf(address(this)) >= stakedAmountStored);
+        assert(REWARDS_TOKEN.balanceOf(address(this)) >= rewardAmountStored);
     }
 
     /**
@@ -103,8 +91,8 @@ contract ERC20StakingPool is AccessControlEnumerable, Pausable, ReentrancyGuard,
 
         if (stakeData.amount == 0) _claimEarnedRewards(stakeData);
 
-        assert(stakingToken.balanceOf(address(this)) >= stakedAmountStored);
-        assert(rewardToken.balanceOf(address(this)) >= rewardAmountStored);
+        assert(STAKING_TOKEN.balanceOf(address(this)) >= stakedAmountStored);
+        assert(REWARDS_TOKEN.balanceOf(address(this)) >= rewardAmountStored);
     }
 
     /**
@@ -116,33 +104,33 @@ contract ERC20StakingPool is AccessControlEnumerable, Pausable, ReentrancyGuard,
         _earnRewards(stakeData);
         _claimEarnedRewards(stakeData);
 
-        assert(stakingToken.balanceOf(address(this)) >= stakedAmountStored);
-        assert(rewardToken.balanceOf(address(this)) >= rewardAmountStored);
+        assert(STAKING_TOKEN.balanceOf(address(this)) >= stakedAmountStored);
+        assert(REWARDS_TOKEN.balanceOf(address(this)) >= rewardAmountStored);
     }
 
     /**
-     * Add the given amount of rewards and distribute it over the given duration.
+     * Add the given amount of rewards and distribute it during the given duration.
      */
     function addRewards(uint256 amount, uint256 duration) external onlyRole(ADD_REWARDS_ROLE) {
         if (amount == 0) revert ZeroAmount();
         if (duration == 0) revert ZeroDuration();
-        if (amount > maxRewardsAmount) revert RewardsAmountTooLarge(maxRewardsAmount, amount);
+        if (amount > maxRewardAmount) revert RewardsAmountTooLarge(maxRewardAmount, amount);
         if (duration > maxRewardsDuration) revert RewardsDurationTooLarge(maxRewardsDuration, duration);
 
         _addRewards(amount, duration);
 
-        assert(stakingToken.balanceOf(address(this)) >= stakedAmountStored);
-        assert(rewardToken.balanceOf(address(this)) >= rewardAmountStored);
+        assert(STAKING_TOKEN.balanceOf(address(this)) >= stakedAmountStored);
+        assert(REWARDS_TOKEN.balanceOf(address(this)) >= rewardAmountStored);
     }
 
     /**
-     * Remove currently distributed rewards from the pool and transfer it back to owner.
+     * Stop distribution and transfer remaining rewards from the pool back to the admin.
      */
     function removeRewards() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _removeRewards();
 
-        assert(stakingToken.balanceOf(address(this)) >= stakedAmountStored);
-        assert(rewardToken.balanceOf(address(this)) >= rewardAmountStored);
+        assert(STAKING_TOKEN.balanceOf(address(this)) >= stakedAmountStored);
+        assert(REWARDS_TOKEN.balanceOf(address(this)) >= rewardAmountStored);
     }
 
     /**
@@ -160,19 +148,19 @@ contract ERC20StakingPool is AccessControlEnumerable, Pausable, ReentrancyGuard,
     }
 
     /**
-     * Allow owner to sweep any token accidently sent to this contract.
+     * Allow admin to sweep any token accidently sent to this contract.
      * Staked token and rewards token can be sweeped up to the amount stored in the pool.
      */
     function sweep(address token) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (token == address(stakingToken)) {
-            stakingToken.safeTransfer(msg.sender, stakingToken.balanceOf(address(this)) - stakedAmountStored);
-        } else if (token == address(rewardToken)) {
-            rewardToken.safeTransfer(msg.sender, rewardToken.balanceOf(address(this)) - rewardAmountStored);
+        if (token == address(STAKING_TOKEN)) {
+            STAKING_TOKEN.safeTransfer(msg.sender, STAKING_TOKEN.balanceOf(address(this)) - stakedAmountStored);
+        } else if (token == address(REWARDS_TOKEN)) {
+            REWARDS_TOKEN.safeTransfer(msg.sender, REWARDS_TOKEN.balanceOf(address(this)) - rewardAmountStored);
         } else {
             IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
         }
 
-        assert(stakingToken.balanceOf(address(this)) >= stakedAmountStored);
-        assert(rewardToken.balanceOf(address(this)) >= rewardAmountStored);
+        assert(STAKING_TOKEN.balanceOf(address(this)) >= stakedAmountStored);
+        assert(REWARDS_TOKEN.balanceOf(address(this)) >= rewardAmountStored);
     }
 }

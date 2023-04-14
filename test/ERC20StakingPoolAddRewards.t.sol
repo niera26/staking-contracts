@@ -16,47 +16,47 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     function testAddRewards_allowsToAddExactOwnerBalance() public {
         setOwnerBalanceTo(1000);
 
-        uint256 originalTotalRewards = poolContract.totalRewards();
+        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
         addRewards(1000, 10);
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards + 1000);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 1000);
     }
 
     function testAddRewards_allowsToAddExactMaxRewardsAmount() public {
-        uint256 amount = poolContract.maxRewardsAmount();
+        uint256 amount = poolContract.maxRewardAmount();
 
-        uint256 originalTotalRewards = poolContract.totalRewards();
+        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
         addRewards(amount, 10);
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards + amount);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + amount);
     }
 
     function testAddRewards_allowsToAddExactMaxRewardsDuration() public {
         uint256 duration = poolContract.maxRewardsDuration();
 
-        uint256 originalTotalRewards = poolContract.totalRewards();
+        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
         addRewards(1000, duration);
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards + 1000);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 1000);
     }
 
     function testAddRewards_increasesTotalRewards() public {
-        uint256 originalTotalRewards = poolContract.totalRewards();
+        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
         addRewards(500, 10);
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards + 500);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 500);
 
         addRewards(500, 10);
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards + 1000);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 1000);
     }
 
     function testAddRewards_increasesRemainingRewards() public {
-        uint256 originalRemainingRewards = poolContract.totalRewards();
+        uint256 originalRemainingRewards = poolContract.rewardAmountStored();
 
         addRewards(500, 10);
 
@@ -105,7 +105,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
 
         poolContract.grantRole(poolContract.ADD_REWARDS_ROLE(), sender);
 
-        uint256 originalTotalRewards = poolContract.totalRewards();
+        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
         rewardsToken.transfer(sender, 500);
 
@@ -114,7 +114,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         addRewards(500, 10);
         vm.stopPrank();
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards + 500);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 500);
 
         rewardsToken.transfer(sender, 500);
 
@@ -123,7 +123,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         addRewards(500, 10);
         vm.stopPrank();
 
-        assertEq(poolContract.totalRewards(), originalTotalRewards + 1000);
+        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 1000);
     }
 
     function testAddRewards_revertsCallerIsNotAddRewardsRole() public {
@@ -153,7 +153,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsRewardsAmountTooLarge() public {
-        uint256 amount = poolContract.maxRewardsAmount();
+        uint256 amount = poolContract.maxRewardAmount();
 
         rewardsToken.approve(address(poolContract), amount + 1);
 

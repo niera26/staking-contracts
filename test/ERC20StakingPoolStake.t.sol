@@ -24,15 +24,15 @@ contract ERC20StakingPoolStakeTest is ERC20StakingPoolBaseTest {
     function testStake_increasesTotalStaked() public {
         address holder = vm.addr(1);
 
-        uint256 originalTotalStaked = poolContract.totalStaked();
+        uint256 originalStakedAmountStored = poolContract.stakedAmountStored();
 
         stake(holder, 500);
 
-        assertEq(poolContract.totalStaked(), originalTotalStaked + 500);
+        assertEq(poolContract.stakedAmountStored(), originalStakedAmountStored + 500);
 
         stake(holder, 500);
 
-        assertEq(poolContract.totalStaked(), originalTotalStaked + 1000);
+        assertEq(poolContract.stakedAmountStored(), originalStakedAmountStored + 1000);
     }
 
     function testStake_transfersTokensFromHolderToContract() public {
