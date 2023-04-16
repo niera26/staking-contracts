@@ -92,8 +92,12 @@ abstract contract ERC20StakingPoolBase {
 
     /**
      * The number of seconds until the end of the current distribution.
+     *
+     * Returns current duration when the pool is inactive (no stake).
      */
     function _remainingSeconds() internal view returns (uint256) {
+        if (stakedAmountStored == 0) return _duration();
+
         if (endingTime < block.timestamp) return 0;
 
         return endingTime - block.timestamp;
@@ -101,8 +105,12 @@ abstract contract ERC20StakingPoolBase {
 
     /**
      * Amount of rewards remaining to be distributed for the current distribution.
+     *
+     * Returns current reward amount when the pool is inactive (no stake).
      */
     function _remainingRewards() internal view returns (uint256) {
+        if (stakedAmountStored == 0) return rewardAmount;
+
         uint256 duration = _duration();
 
         if (duration == 0) return 0;
