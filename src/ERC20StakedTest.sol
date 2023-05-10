@@ -6,7 +6,7 @@ import {ERC20} from "openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract ERC20StakedTest is ERC20 {
     address[] minters;
 
-    constructor() ERC20("Staking Test Token", "SKTT") {}
+    constructor() ERC20("Beh test token", "tBeh") {}
 
     function decimals() public view virtual override returns (uint8) {
         return 18;

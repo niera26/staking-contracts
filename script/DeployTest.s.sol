@@ -6,9 +6,9 @@ import "../src/ERC20RewardTest.sol";
 import "../src/ERC20StakedTest.sol";
 import "../src/ERC20StakingPool.sol";
 
-contract DeployTestnet is Script {
+contract DeployTest is Script {
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY_TESTNET");
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
         vm.startBroadcast(deployerPrivateKey);
 
