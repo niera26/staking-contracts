@@ -3,16 +3,16 @@ pragma solidity ^0.8.17;
 
 import {AccessControl} from "openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "openzeppelin/contracts/security/Pausable.sol";
-import {ERC20StakingPoolBase} from "./ERC20StakingPoolBase.sol";
+import {ERC20StakingPoolAbstract} from "./ERC20StakingPoolAbstract.sol";
 
-contract ERC20StakingPool is ERC20StakingPoolBase, AccessControl, Pausable {
+contract ERC20StakingPool is ERC20StakingPoolAbstract, AccessControl, Pausable {
     bytes32 public constant ADD_REWARDS_ROLE = keccak256("ADD_REWARDS_ROLE");
 
     /**
      * Grant the admin and add rewards roles to the deployer.
      */
     constructor(address _stakingToken, address _rewardToken, uint256 _maxRewardAmount, uint256 _maxRewardsDuration)
-        ERC20StakingPoolBase(_stakingToken, _rewardToken, _maxRewardAmount, _maxRewardsDuration)
+        ERC20StakingPoolAbstract(_stakingToken, _rewardToken, _maxRewardAmount, _maxRewardsDuration)
     {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADD_REWARDS_ROLE, msg.sender);

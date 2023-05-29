@@ -5,7 +5,7 @@ import {IERC20Metadata} from "openzeppelin/contracts/interfaces/IERC20Metadata.s
 import {ReentrancyGuard} from "openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {SafeERC20} from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-abstract contract ERC20StakingPoolBase is ReentrancyGuard {
+abstract contract ERC20StakingPoolAbstract is ReentrancyGuard {
     using SafeERC20 for IERC20Metadata;
 
     // staking and rewards tokens managed by the contract.
