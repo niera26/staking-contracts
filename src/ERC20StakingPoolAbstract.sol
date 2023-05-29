@@ -171,8 +171,11 @@ abstract contract ERC20StakingPoolAbstract is ReentrancyGuard {
         stakeData.earned = 0;
         stakeData.lastRewardsPerToken = 0;
 
-        stakedAmountStored -= amount;
-        rewardAmountStored -= earned;
+        // unchecked so user can withdraw even if there's a problem with the accounting of those values.
+        unchecked {
+            stakedAmountStored -= amount;
+            rewardAmountStored -= earned;
+        }
 
         STAKING_TOKEN.safeTransfer(msg.sender, amount);
     }
