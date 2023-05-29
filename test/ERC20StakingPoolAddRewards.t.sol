@@ -139,7 +139,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsZeroAmount() public {
-        vm.expectRevert(ERC20StakingPool.ZeroAmount.selector);
+        vm.expectRevert(ERC20StakingPoolBase.ZeroAmount.selector);
 
         poolContract.addRewards(0, 10);
     }
@@ -147,7 +147,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     function testAddRewards_revertsZeroDuration() public {
         rewardsToken.approve(address(poolContract), 1000);
 
-        vm.expectRevert(ERC20StakingPool.ZeroDuration.selector);
+        vm.expectRevert(ERC20StakingPoolBase.ZeroDuration.selector);
 
         poolContract.addRewards(1000, 0);
     }
@@ -157,7 +157,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
 
         rewardsToken.approve(address(poolContract), amount + 1);
 
-        vm.expectRevert(abi.encodeWithSelector(ERC20StakingPool.RewardsAmountTooLarge.selector, amount, amount + 1));
+        vm.expectRevert(abi.encodeWithSelector(ERC20StakingPoolBase.RewardsAmountTooLarge.selector, amount, amount + 1));
 
         poolContract.addRewards(amount + 1, 10);
     }
@@ -168,7 +168,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         rewardsToken.approve(address(poolContract), 1000);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ERC20StakingPool.RewardsDurationTooLarge.selector, duration, duration + 1)
+            abi.encodeWithSelector(ERC20StakingPoolBase.RewardsDurationTooLarge.selector, duration, duration + 1)
         );
 
         poolContract.addRewards(1000, duration + 1);

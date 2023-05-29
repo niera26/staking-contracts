@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {IERC20} from "openzeppelin/contracts/interfaces/IERC20.sol";
 import {IERC20Metadata} from "openzeppelin/contracts/interfaces/IERC20Metadata.sol";
+import {ReentrancyGuard} from "openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {SafeERC20} from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-abstract contract ERC20StakingPoolBase {
-    using SafeERC20 for IERC20;
+abstract contract ERC20StakingPoolBase is ReentrancyGuard {
+    using SafeERC20 for IERC20Metadata;
 
     // staking and rewards tokens managed by the contract.
-    IERC20 internal immutable STAKING_TOKEN;
-    IERC20 internal immutable REWARDS_TOKEN;
+    IERC20Metadata private immutable STAKING_TOKEN;
+    IERC20Metadata private immutable REWARDS_TOKEN;
 
     // constants for max reward distribution amount and duration.
     uint256 public immutable maxRewardAmount;
@@ -61,24 +61,190 @@ abstract contract ERC20StakingPoolBase {
     event RewardsRemoved(uint256 amount);
     event RewardsClaimed(address indexed addr, uint256 amount);
 
+    // errors.
+    error ZeroAmount();
+    error ZeroDuration();
+    error RewardsAmountTooLarge(uint256 max, uint256 amount);
+    error RewardsDurationTooLarge(uint256 max, uint256 amount);
+    error InsufficientStakedAmount(uint256 staked, uint256 amount);
+
     /**
      * Both tokens must have decimals exposed.
      */
     constructor(address _stakingToken, address _rewardsToken, uint256 _maxRewardAmount, uint256 _maxRewardsDuration) {
-        stakingTokenDecimals = IERC20Metadata(_stakingToken).decimals();
-        rewardsTokenDecimals = IERC20Metadata(_rewardsToken).decimals();
+        STAKING_TOKEN = IERC20Metadata(_stakingToken);
+        REWARDS_TOKEN = IERC20Metadata(_rewardsToken);
+
+        stakingTokenDecimals = STAKING_TOKEN.decimals();
+        rewardsTokenDecimals = REWARDS_TOKEN.decimals();
 
         require(stakingTokenDecimals <= 18, "staking token has too much decimals (> 18)");
         require(rewardsTokenDecimals <= 18, "rewards token has too much decimals (> 18)");
-
-        STAKING_TOKEN = IERC20(_stakingToken);
-        REWARDS_TOKEN = IERC20(_rewardsToken);
 
         maxRewardAmount = _maxRewardAmount * (10 ** rewardsTokenDecimals);
         maxRewardsDuration = _maxRewardsDuration;
 
         stakingScale = 10 ** (18 - stakingTokenDecimals);
         rewardsScale = 10 ** (18 - rewardsTokenDecimals);
+    }
+
+    /**
+     * Amount of rewards remaining to distribute.
+     */
+    function remainingRewards() external view returns (uint256) {
+        return _remainingRewards();
+    }
+
+    /**
+     * Seconds remaining for this distribution.
+     */
+    function remainingSeconds() external view returns (uint256) {
+        return _remainingSeconds();
+    }
+
+    /**
+     * Staked amount of the given holder.
+     */
+    function staked(address addr) external view returns (uint256) {
+        return addressToStakeData[addr].amount;
+    }
+
+    /**
+     * Pending rewards of the given holder.
+     */
+    function pendingRewards(address addr) external view returns (uint256) {
+        return _pendingRewards(addressToStakeData[addr]);
+    }
+
+    /**
+     * Add tokens to the stake of the holder.
+     */
+    function _stake(uint256 amount) internal nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+
+        StakeData storage stakeData = addressToStakeData[msg.sender];
+
+        _earnRewards(stakeData);
+        _increaseTotalStaked(stakeData, amount);
+    }
+
+    /**
+     * Remove tokens from the stake of the holder.
+     *
+     * Automatically claim the rewards when everything is unstaked.
+     */
+    function _unstake(uint256 amount) internal nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+
+        StakeData storage stakeData = addressToStakeData[msg.sender];
+
+        if (amount > stakeData.amount) revert InsufficientStakedAmount(stakeData.amount, amount);
+
+        _earnRewards(stakeData);
+        _decreaseTotalStaked(stakeData, amount);
+
+        if (stakeData.amount == 0) _claimEarnedRewards(stakeData);
+    }
+
+    /**
+     * Claim all rewards earned by the holder.
+     */
+    function _claim() internal nonReentrant {
+        StakeData storage stakeData = addressToStakeData[msg.sender];
+
+        _earnRewards(stakeData);
+        _claimEarnedRewards(stakeData);
+    }
+
+    /**
+     * Allow to withdraw staked tokens without claming rewards, in case of emergency.
+     */
+    function _emergencyWithdraw() internal nonReentrant {
+        StakeData storage stakeData = addressToStakeData[msg.sender];
+
+        _earnRewards(stakeData);
+
+        uint256 amount = stakeData.amount;
+        uint256 earned = stakeData.earned;
+
+        stakeData.amount = 0;
+        stakeData.earned = 0;
+        stakeData.lastRewardsPerToken = 0;
+
+        stakedAmountStored -= amount;
+        rewardAmountStored -= earned;
+
+        STAKING_TOKEN.safeTransfer(msg.sender, amount);
+    }
+
+    /**
+     * Starts a new distribution and adds the given rewards for the given duration.
+     *
+     * It *must* be used to add rewards to the pool.
+     */
+    function _addRewards(uint256 amount, uint256 duration) internal {
+        if (amount == 0) revert ZeroAmount();
+        if (duration == 0) revert ZeroDuration();
+        if (amount > maxRewardAmount) revert RewardsAmountTooLarge(maxRewardAmount, amount);
+        if (duration > maxRewardsDuration) revert RewardsDurationTooLarge(maxRewardsDuration, duration);
+
+        _startNewDistribution();
+
+        rewardAmount += amount;
+        endingTime += duration;
+
+        rewardAmountStored += amount;
+        REWARDS_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
+        emit RewardsAdded(amount, duration);
+
+        // should never happend but why not make sure.
+        uint256 totalDuration = _duration();
+
+        assert(totalDuration == 0 || rewardAmount <= (type(uint256).max / (rewardsScale * totalDuration * precision)));
+    }
+
+    /**
+     * Transfers back all currently distributed rewards.
+     *
+     * It *must* be used to remove rewards from the pool.
+     */
+    function _removeRewards() internal {
+        _startNewDistribution();
+
+        uint256 amount = rewardAmount;
+
+        if (amount > 0) {
+            rewardAmount = 0;
+            startingTime = block.timestamp;
+            endingTime = block.timestamp;
+
+            rewardAmountStored -= amount;
+            REWARDS_TOKEN.safeTransfer(msg.sender, amount);
+            emit RewardsRemoved(amount);
+        }
+    }
+
+    /**
+     * Sweep any token accidently sent to this contract.
+     * Staked token and rewards token can be sweeped up to the amount stored in the pool.
+     */
+    function _sweep(address token) internal {
+        if (token == address(STAKING_TOKEN)) {
+            STAKING_TOKEN.safeTransfer(msg.sender, STAKING_TOKEN.balanceOf(address(this)) - stakedAmountStored);
+        } else if (token == address(REWARDS_TOKEN)) {
+            REWARDS_TOKEN.safeTransfer(msg.sender, REWARDS_TOKEN.balanceOf(address(this)) - rewardAmountStored);
+        } else {
+            IERC20Metadata(token).safeTransfer(msg.sender, IERC20Metadata(token).balanceOf(address(this)));
+        }
+    }
+
+    /**
+     * Remove all rewards, in case of emergency.
+     */
+    function _emergencyWithdrawRewards() internal {
+        uint256 balance = REWARDS_TOKEN.balanceOf(address(this));
+
+        REWARDS_TOKEN.safeTransfer(msg.sender, balance);
     }
 
     /**
@@ -130,12 +296,12 @@ abstract contract ERC20StakingPoolBase {
 
         if (duration == 0) return rewardsPerTokenAcc;
 
-        uint256 totalRewards = rewardAmount * _duration();
-        uint256 remainingRewards = rewardAmount * _remainingSeconds();
+        uint256 locTotalRewards = rewardAmount * _duration();
+        uint256 locRemainingRewards = rewardAmount * _remainingSeconds();
 
-        if (totalRewards < remainingRewards) return rewardsPerTokenAcc;
+        if (locTotalRewards < locRemainingRewards) return rewardsPerTokenAcc;
 
-        uint256 distributedRewards = totalRewards - remainingRewards;
+        uint256 distributedRewards = locTotalRewards - locRemainingRewards;
         uint256 scaledStakedAmount = stakedAmountStored * stakingScale * duration;
         uint256 scaledDistributedRewards = distributedRewards * rewardsScale * precision;
 
@@ -218,48 +384,6 @@ abstract contract ERC20StakingPoolBase {
         stakedAmountStored -= amount;
         STAKING_TOKEN.safeTransfer(msg.sender, amount);
         emit TokenUnstacked(msg.sender, amount);
-    }
-
-    /**
-     * Starts a new distribution and adds the given rewards for the given duration.
-     *
-     * It *must* be used to add rewards to the pool.
-     */
-    function _addRewards(uint256 amount, uint256 duration) internal {
-        _startNewDistribution();
-
-        rewardAmount += amount;
-        endingTime += duration;
-
-        rewardAmountStored += amount;
-        REWARDS_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
-        emit RewardsAdded(amount, duration);
-
-        // should never happend but why not make sure.
-        uint256 totalDuration = _duration();
-
-        assert(totalDuration == 0 || rewardAmount <= (type(uint256).max / (rewardsScale * totalDuration * precision)));
-    }
-
-    /**
-     * Transfers back all currently distributed rewards.
-     *
-     * It *must* be used to remove rewards from the pool.
-     */
-    function _removeRewards() internal {
-        _startNewDistribution();
-
-        uint256 amount = rewardAmount;
-
-        if (amount > 0) {
-            rewardAmount = 0;
-            startingTime = block.timestamp;
-            endingTime = block.timestamp;
-
-            rewardAmountStored -= amount;
-            REWARDS_TOKEN.safeTransfer(msg.sender, amount);
-            emit RewardsRemoved(amount);
-        }
     }
 
     /**

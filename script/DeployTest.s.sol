@@ -15,7 +15,7 @@ contract DeployTest is Script {
         ERC20StakedTest stakingToken = new ERC20StakedTest();
         ERC20RewardTest rewardsToken = new ERC20RewardTest();
 
-        new ERC20StakingPool(address(stakingToken), address(rewardsToken));
+        new ERC20StakingPool(address(stakingToken), address(rewardsToken), 1_000_000_000, 365 days);
 
         vm.stopBroadcast();
     }

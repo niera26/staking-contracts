@@ -65,7 +65,7 @@ contract ERC20StakingPoolStakeTest is ERC20StakingPoolBaseTest {
     function testStake_revertsZeroAmount() public {
         address holder = vm.addr(1);
 
-        vm.expectRevert(ERC20StakingPool.ZeroAmount.selector);
+        vm.expectRevert(ERC20StakingPoolBase.ZeroAmount.selector);
 
         vm.prank(holder);
 

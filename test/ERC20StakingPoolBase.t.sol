@@ -33,7 +33,7 @@ contract ERC20StakingPoolBaseTest is Test {
         stakingToken = new ERC20StakedTest();
         rewardsToken = new ERC20RewardTest();
         randomToken = new ERC20Mock("Random token", "RDTT", 18);
-        poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken));
+        poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken), 1_000_000_000, 365 days);
         stakingToken.mint(1_000_000 * (10 ** stakingToken.decimals()));
     }
 
