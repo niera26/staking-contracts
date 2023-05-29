@@ -169,7 +169,6 @@ abstract contract ERC20StakingPoolAbstract is ReentrancyGuard {
 
         stakeData.amount = 0;
         stakeData.earned = 0;
-        stakeData.lastRewardsPerToken = 0;
 
         // unchecked so user can withdraw even if there's a problem with the accounting of those values.
         unchecked {
