@@ -60,11 +60,13 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
     // staking events.
     event TokenStacked(address indexed addr, uint256 amount);
     event TokenUnstacked(address indexed addr, uint256 amount);
+    event EmergencyWithdraw(address indexed addr, uint256 amount);
 
     // rewards events.
     event RewardsAdded(uint256 amount, uint256 duration);
     event RewardsRemoved(uint256 amount);
     event RewardsClaimed(address indexed addr, uint256 amount);
+    event EmergencyWithdrawRewards(address indexed addr, uint256 amount);
 
     // errors.
     error ZeroAmount();
@@ -184,6 +186,8 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
         }
 
         STAKING_TOKEN.safeTransfer(msg.sender, amount);
+
+        emit EmergencyWithdraw(msg.sender, amount);
     }
 
     /**
@@ -265,9 +269,11 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
      * Remove all rewards, in case of emergency.
      */
     function emergencyWithdrawRewards() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint256 balance = REWARDS_TOKEN.balanceOf(address(this));
+        uint256 amount = REWARDS_TOKEN.balanceOf(address(this));
 
-        REWARDS_TOKEN.safeTransfer(msg.sender, balance);
+        REWARDS_TOKEN.safeTransfer(msg.sender, amount);
+
+        emit EmergencyWithdrawRewards(msg.sender, amount);
     }
 
     /**

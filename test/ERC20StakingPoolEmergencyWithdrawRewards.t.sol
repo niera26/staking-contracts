@@ -5,6 +5,8 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolEmergencyWithdrawRewardsTest is ERC20StakingPoolBaseTest {
+    event EmergencyWithdrawRewards(address indexed addr, uint256 amount);
+
     function testEmergencyWithdrawRewards_allowsOwnerToWithdrawRewards() public {
         address holder = vm.addr(1);
 
@@ -20,6 +22,20 @@ contract ERC20StakingPoolEmergencyWithdrawRewardsTest is ERC20StakingPoolBaseTes
 
         assertEq(rewardsToken.balanceOf(address(poolContract)), 0);
         assertEq(rewardsToken.balanceOf(address(this)), rewardsToken.totalSupply());
+    }
+
+    function testEmergencyWithdraw_emitsEmergencyWithdraw() public {
+        address holder = vm.addr(1);
+
+        stake(holder, 1000);
+
+        addRewards(10000, 10 days);
+
+        vm.expectEmit(true, true, true, true, address(poolContract));
+
+        emit EmergencyWithdrawRewards(address(this), 10000);
+
+        poolContract.emergencyWithdrawRewards();
     }
 
     function testEmergencyWithdrawRewards_revertsCallerIsNotAdminRole() public {
