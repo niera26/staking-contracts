@@ -220,7 +220,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
     function testUnstake_revertsZeroAmount() public {
         address holder = vm.addr(1);
 
-        vm.expectRevert(ERC20StakingPoolAbstract.ZeroAmount.selector);
+        vm.expectRevert(ERC20StakingPool.ZeroAmount.selector);
 
         vm.prank(holder);
 
@@ -232,7 +232,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         stake(holder, 1000);
 
-        vm.expectRevert(abi.encodeWithSelector(ERC20StakingPoolAbstract.InsufficientStakedAmount.selector, 1000, 1001));
+        vm.expectRevert(abi.encodeWithSelector(ERC20StakingPool.InsufficientStakedAmount.selector, 1000, 1001));
 
         vm.prank(holder);
 

@@ -35,6 +35,8 @@ contract ERC20StakingPoolBaseTest is Test {
         randomToken = new ERC20Mock("Random token", "RDTT", 18);
         poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken), 1_000_000_000, 365 days);
         stakingToken.mint(1_000_000 * (10 ** stakingToken.decimals()));
+
+        poolContract.grantRole(poolContract.OPERATOR_ROLE(), address(this));
     }
 
     function stake(address holder, uint256 amount) internal {
@@ -74,13 +76,13 @@ contract ERC20StakingPoolBaseTest is Test {
         );
     }
 
-    function notAddRewardsRoleErrorMessage(address sender) internal view returns (bytes memory) {
+    function notOperatorRoleErrorMessage(address sender) internal view returns (bytes memory) {
         return bytes(
             abi.encodePacked(
                 "AccessControl: account ",
                 Strings.toHexString(sender),
                 " is missing role ",
-                Strings.toHexString(uint256(poolContract.ADD_REWARDS_ROLE()), 32)
+                Strings.toHexString(uint256(poolContract.OPERATOR_ROLE()), 32)
             )
         );
     }

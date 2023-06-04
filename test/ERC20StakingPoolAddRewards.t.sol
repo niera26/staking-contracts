@@ -100,10 +100,10 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         addRewards(1000, 10);
     }
 
-    function testAddRewards_allowsAddRewardsRoleToAddRewards() public {
+    function testAddRewards_allowsOperatorRoleToAddRewards() public {
         address sender = vm.addr(1);
 
-        poolContract.grantRole(poolContract.ADD_REWARDS_ROLE(), sender);
+        poolContract.grantRole(poolContract.OPERATOR_ROLE(), sender);
 
         uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
@@ -126,12 +126,12 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 1000);
     }
 
-    function testAddRewards_revertsCallerIsNotAddRewardsRole() public {
+    function testAddRewards_revertsCallerIsNotOperatorRole() public {
         address sender = vm.addr(1);
 
         rewardsToken.approve(address(poolContract), 1000);
 
-        vm.expectRevert(notAddRewardsRoleErrorMessage(sender));
+        vm.expectRevert(notOperatorRoleErrorMessage(sender));
 
         vm.prank(sender);
 
@@ -139,7 +139,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_revertsZeroAmount() public {
-        vm.expectRevert(ERC20StakingPoolAbstract.ZeroAmount.selector);
+        vm.expectRevert(ERC20StakingPool.ZeroAmount.selector);
 
         poolContract.addRewards(0, 10);
     }
@@ -147,7 +147,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     function testAddRewards_revertsZeroDuration() public {
         rewardsToken.approve(address(poolContract), 1000);
 
-        vm.expectRevert(ERC20StakingPoolAbstract.ZeroDuration.selector);
+        vm.expectRevert(ERC20StakingPool.ZeroDuration.selector);
 
         poolContract.addRewards(1000, 0);
     }
@@ -157,9 +157,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
 
         rewardsToken.approve(address(poolContract), amount + 1);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(ERC20StakingPoolAbstract.RewardsAmountTooLarge.selector, amount, amount + 1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(ERC20StakingPool.RewardsAmountTooLarge.selector, amount, amount + 1));
 
         poolContract.addRewards(amount + 1, 10);
     }
@@ -170,7 +168,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         rewardsToken.approve(address(poolContract), 1000);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ERC20StakingPoolAbstract.RewardsDurationTooLarge.selector, duration, duration + 1)
+            abi.encodeWithSelector(ERC20StakingPool.RewardsDurationTooLarge.selector, duration, duration + 1)
         );
 
         poolContract.addRewards(1000, duration + 1);
