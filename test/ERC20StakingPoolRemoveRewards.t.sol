@@ -5,8 +5,6 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolRemoveRewardsTest is ERC20StakingPoolBaseTest {
-    event RewardsRemoved(uint256 amount);
-
     function testRemoveRewards_decreasesTotalRewards() public {
         stake(vm.addr(1), 1000);
 
@@ -66,7 +64,7 @@ contract ERC20StakingPoolRemoveRewardsTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsRemoved(500);
+        emit ERC20StakingPoolEvents.RewardsRemoved(address(this), 500);
 
         poolContract.removeRewards();
     }

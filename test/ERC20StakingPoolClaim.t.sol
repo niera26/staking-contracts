@@ -5,8 +5,6 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
-    event RewardsClaimed(address indexed addr, uint256 amount);
-
     function testClaim_doesNotReduceTotalRewardsWhenHolderHasNoReward() public {
         address holder = vm.addr(1);
 
@@ -89,7 +87,7 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsClaimed(holder, 0);
+        emit ERC20StakingPoolEvents.RewardsClaimed(holder, 0);
 
         claim(holder);
     }
@@ -105,7 +103,7 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsClaimed(holder, 1000);
+        emit ERC20StakingPoolEvents.RewardsClaimed(holder, 1000);
 
         claim(holder);
     }

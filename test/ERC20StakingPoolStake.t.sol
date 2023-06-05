@@ -5,8 +5,6 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolStakeTest is ERC20StakingPoolBaseTest {
-    event TokenStacked(address indexed addr, uint256 amount);
-
     function testStake_increasesHolderStake() public {
         address holder = vm.addr(1);
 
@@ -57,7 +55,7 @@ contract ERC20StakingPoolStakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit TokenStacked(holder, 1000);
+        emit ERC20StakingPoolEvents.TokenStacked(holder, 1000);
 
         stake(holder, 1000);
     }

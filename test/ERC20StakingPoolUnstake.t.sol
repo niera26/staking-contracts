@@ -5,9 +5,6 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
-    event TokenUnstacked(address indexed addr, uint256 amount);
-    event RewardsClaimed(address indexed addr, uint256 amount);
-
     function testUnstake_decreasesHolderStake() public {
         address holder = vm.addr(1);
 
@@ -66,7 +63,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit TokenUnstacked(holder, 1000);
+        emit ERC20StakingPoolEvents.TokenUnstacked(holder, 1000);
 
         unstake(holder, 1000);
     }
@@ -180,7 +177,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsClaimed(holder, 0);
+        emit ERC20StakingPoolEvents.RewardsClaimed(holder, 0);
 
         unstake(holder, 500);
     }
@@ -196,7 +193,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsClaimed(holder, 0);
+        emit ERC20StakingPoolEvents.RewardsClaimed(holder, 0);
 
         unstake(holder, 1000);
     }
@@ -212,7 +209,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsClaimed(holder, 1000);
+        emit ERC20StakingPoolEvents.RewardsClaimed(holder, 1000);
 
         unstake(holder, 1000);
     }

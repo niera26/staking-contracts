@@ -5,8 +5,6 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolEmergencyWithdrawTest is ERC20StakingPoolBaseTest {
-    event EmergencyWithdraw(address indexed addr, uint256 amount);
-
     function testEmergencyWithdraw_allowsHolderToWithdrawTokens() public {
         address holder = vm.addr(1);
 
@@ -48,7 +46,7 @@ contract ERC20StakingPoolEmergencyWithdrawTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit EmergencyWithdraw(holder, 1000);
+        emit ERC20StakingPoolEvents.EmergencyWithdraw(holder, 1000);
 
         vm.prank(holder);
 

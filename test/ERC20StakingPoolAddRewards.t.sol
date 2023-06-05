@@ -5,8 +5,6 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
-    event RewardsAdded(uint256 amount, uint256 duration);
-
     function setOwnerBalanceTo(uint256 amount) private {
         address recipient = vm.addr(1);
 
@@ -95,7 +93,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     function testAddRewards_emitsRewardsAdded() public {
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsAdded(1000, 10);
+        emit ERC20StakingPoolEvents.RewardsAdded(address(this), 1000, 10);
 
         addRewards(1000, 10);
     }

@@ -2,12 +2,13 @@
 pragma solidity ^0.8.17;
 
 import "forge-std/Test.sol";
-import "../src/ERC20StakedTest.sol";
-import "../src/ERC20RewardTest.sol";
-import "../src/ERC20StakingPool.sol";
 import "openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin/contracts/utils/Strings.sol";
+import "../src/ERC20StakedTest.sol";
+import "../src/ERC20RewardTest.sol";
+import "../src/ERC20StakingPool.sol";
+import "../src/ERC20StakingPoolEvents.sol";
 
 contract ERC20Mock is ERC20 {
     uint8 private _decimals;

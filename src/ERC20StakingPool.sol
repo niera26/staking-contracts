@@ -7,6 +7,7 @@ import {Pausable} from "openzeppelin/contracts/security/Pausable.sol";
 import {ReentrancyGuard} from "openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {SafeERC20} from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20StakingPool} from "./IERC20StakingPool.sol";
+import "./ERC20StakingPoolEvents.sol";
 
 contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20Metadata;
@@ -56,16 +57,6 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
         uint256 earned; // rewards earned so far and yet to claim.
         uint256 lastRewardsPerToken; // rewards per token of the last claim.
     }
-
-    // staking events.
-    event TokenStacked(address indexed addr, uint256 amount);
-    event TokenUnstacked(address indexed addr, uint256 amount);
-    event EmergencyWithdraw(address indexed addr, uint256 amount);
-
-    // rewards events.
-    event RewardsAdded(uint256 amount, uint256 duration);
-    event RewardsRemoved(uint256 amount);
-    event RewardsClaimed(address indexed addr, uint256 amount);
 
     // errors.
     error ZeroAmount();
@@ -188,7 +179,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
 
         STAKING_TOKEN.safeTransfer(msg.sender, amount);
 
-        emit EmergencyWithdraw(msg.sender, amount);
+        emit ERC20StakingPoolEvents.EmergencyWithdraw(msg.sender, amount);
     }
 
     /**
@@ -209,7 +200,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
 
         rewardAmountStored += amount;
         REWARDS_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
-        emit RewardsAdded(amount, duration);
+        emit ERC20StakingPoolEvents.RewardsAdded(msg.sender, amount, duration);
     }
 
     /**
@@ -229,7 +220,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
 
             rewardAmountStored -= amount;
             REWARDS_TOKEN.safeTransfer(msg.sender, amount);
-            emit RewardsRemoved(amount);
+            emit ERC20StakingPoolEvents.RewardsRemoved(msg.sender, amount);
         }
     }
 
@@ -252,13 +243,22 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
      * Staked token and rewards token can be sweeped up to the amount stored in the pool.
      */
     function sweep(address token) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 locked;
+        uint256 balance = IERC20Metadata(token).balanceOf(address(this));
+
         if (token == address(STAKING_TOKEN)) {
-            STAKING_TOKEN.safeTransfer(msg.sender, STAKING_TOKEN.balanceOf(address(this)) - stakedAmountStored);
+            locked = stakedAmountStored;
         } else if (token == address(REWARDS_TOKEN)) {
-            REWARDS_TOKEN.safeTransfer(msg.sender, REWARDS_TOKEN.balanceOf(address(this)) - rewardAmountStored);
+            locked = rewardAmountStored;
         } else {
-            IERC20Metadata(token).safeTransfer(msg.sender, IERC20Metadata(token).balanceOf(address(this)));
+            locked = 0;
         }
+
+        uint256 amount = balance - locked;
+
+        IERC20Metadata(token).safeTransfer(msg.sender, amount);
+
+        emit ERC20StakingPoolEvents.Swept(msg.sender, token, amount);
     }
 
     /**
@@ -382,7 +382,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
         stakeData.amount += amount;
         stakedAmountStored += amount;
         STAKING_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
-        emit TokenStacked(msg.sender, amount);
+        emit ERC20StakingPoolEvents.TokenStacked(msg.sender, amount);
     }
 
     /**
@@ -396,7 +396,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
         stakeData.amount -= amount;
         stakedAmountStored -= amount;
         STAKING_TOKEN.safeTransfer(msg.sender, amount);
-        emit TokenUnstacked(msg.sender, amount);
+        emit ERC20StakingPoolEvents.TokenUnstacked(msg.sender, amount);
     }
 
     /**
@@ -411,7 +411,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
             stakeData.earned = 0;
             rewardAmountStored -= earned;
             REWARDS_TOKEN.safeTransfer(msg.sender, earned);
-            emit RewardsClaimed(msg.sender, earned);
+            emit ERC20StakingPoolEvents.RewardsClaimed(msg.sender, earned);
         }
     }
 }
