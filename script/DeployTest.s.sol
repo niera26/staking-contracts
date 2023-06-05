@@ -10,12 +10,13 @@ contract DeployTest is Script {
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
+        address rewardsTokenAddress = vm.envAddress("REWARDS_TOKEN_ADDRESS");
+
         vm.startBroadcast(deployerPrivateKey);
 
         ERC20StakedTest stakingToken = new ERC20StakedTest();
-        ERC20RewardTest rewardsToken = new ERC20RewardTest();
 
-        new ERC20StakingPool(address(stakingToken), address(rewardsToken), 1_000_000_000, 365 days);
+        new ERC20StakingPool(address(stakingToken), rewardsTokenAddress, 1_000_000_000, 365 days);
 
         vm.stopBroadcast();
     }

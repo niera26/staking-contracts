@@ -7,6 +7,6 @@ optimizer_runs = 10_000
 
 [rpc_endpoints]
 arbitrum = "${ARBITRUM_RPC_MAINNET}"
-arbitrum-goerli = "${ARBITRUM_RPC_TESTNET}"
+arbitrum-testnet = "${ARBITRUM_RPC_TESTNET}"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
