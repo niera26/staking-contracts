@@ -69,10 +69,10 @@ contract ERC20StakingPoolRemoveRewardsTest is ERC20StakingPoolBaseTest {
         poolContract.removeRewards();
     }
 
-    function testRemoveRewards_revertsCallerIsNotAdminRole() public {
+    function testRemoveRewards_revertsCallerIsNotOperatorRole() public {
         address sender = vm.addr(1);
 
-        vm.expectRevert(notAdminRoleErrorMessage(sender));
+        vm.expectRevert(notOperatorRoleErrorMessage(sender));
 
         vm.prank(sender);
 

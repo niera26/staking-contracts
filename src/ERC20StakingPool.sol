@@ -208,7 +208,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
      *
      * It *must* be used to remove rewards from the pool.
      */
-    function removeRewards() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function removeRewards() external onlyRole(OPERATOR_ROLE) {
         _startNewDistribution();
 
         uint256 amount = rewardAmount;
