@@ -32,7 +32,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_allowsToAddExactMaxRewardsDuration() public {
-        uint256 duration = poolContract.maxRewardsDuration();
+        uint256 duration = poolContract.maxRewardDuration();
 
         uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
@@ -155,18 +155,18 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
 
         rewardsToken.approve(address(poolContract), amount + 1);
 
-        vm.expectRevert(abi.encodeWithSelector(ERC20StakingPool.RewardsAmountTooLarge.selector, amount, amount + 1));
+        vm.expectRevert(abi.encodeWithSelector(ERC20StakingPool.RewardAmountTooLarge.selector, amount, amount + 1));
 
         poolContract.addRewards(amount + 1, 10);
     }
 
     function testAddRewards_revertsRewardsDurationTooLarge() public {
-        uint256 duration = poolContract.maxRewardsDuration();
+        uint256 duration = poolContract.maxRewardDuration();
 
         rewardsToken.approve(address(poolContract), 1000);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ERC20StakingPool.RewardsDurationTooLarge.selector, duration, duration + 1)
+            abi.encodeWithSelector(ERC20StakingPool.RewardDurationTooLarge.selector, duration, duration + 1)
         );
 
         poolContract.addRewards(1000, duration + 1);

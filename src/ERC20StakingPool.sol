@@ -21,7 +21,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
     IERC20Metadata private immutable STAKING_TOKEN;
     IERC20Metadata private immutable REWARDS_TOKEN;
 
-    // both tokens decimals - could be used by other contracts.
+    // both tokens decimals.
     uint256 public immutable stakingTokenDecimals;
     uint256 public immutable rewardsTokenDecimals;
 
@@ -31,7 +31,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
 
     // max amount and duration for a distribution.
     uint256 public immutable maxRewardAmount;
-    uint256 public immutable maxRewardsDuration;
+    uint256 public immutable maxRewardDuration;
 
     // numbers of both tokens stored in the pool (!= contract balance).
     // allows to sweep accidental transfer to the contract.
@@ -44,7 +44,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
     // is added to this.
     uint256 private rewardsPerTokenAcc;
 
-    // amount of rewards to distribute between starting and ending times.
+    // amount of rewards being distributed between starting and ending times.
     uint256 private rewardAmount;
     uint256 private startingTime;
     uint256 private endingTime;
@@ -61,15 +61,15 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
     // errors.
     error ZeroAmount();
     error ZeroDuration();
-    error RewardsAmountTooLarge(uint256 max, uint256 amount);
-    error RewardsDurationTooLarge(uint256 max, uint256 amount);
+    error RewardAmountTooLarge(uint256 max, uint256 amount);
+    error RewardDurationTooLarge(uint256 max, uint256 amount);
     error InsufficientStakedAmount(uint256 staked, uint256 amount);
 
     /**
      * - deployer gets granted admin role.
      * - both tokens must have less than 18 decimals.
      */
-    constructor(address _stakingToken, address _rewardsToken, uint256 _maxRewardAmount, uint256 _maxRewardsDuration) {
+    constructor(address _stakingToken, address _rewardsToken, uint256 _maxRewardAmount, uint256 _maxRewardDuration) {
         STAKING_TOKEN = IERC20Metadata(_stakingToken);
         REWARDS_TOKEN = IERC20Metadata(_rewardsToken);
 
@@ -83,7 +83,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
         rewardsScale = 10 ** (18 - rewardsTokenDecimals);
 
         maxRewardAmount = _maxRewardAmount * (10 ** rewardsTokenDecimals);
-        maxRewardsDuration = _maxRewardsDuration;
+        maxRewardDuration = _maxRewardDuration;
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -190,8 +190,8 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
     function addRewards(uint256 amount, uint256 duration) external onlyRole(OPERATOR_ROLE) {
         if (amount == 0) revert ZeroAmount();
         if (duration == 0) revert ZeroDuration();
-        if (amount > maxRewardAmount) revert RewardsAmountTooLarge(maxRewardAmount, amount);
-        if (duration > maxRewardsDuration) revert RewardsDurationTooLarge(maxRewardsDuration, duration);
+        if (amount > maxRewardAmount) revert RewardAmountTooLarge(maxRewardAmount, amount);
+        if (duration > maxRewardDuration) revert RewardDurationTooLarge(maxRewardDuration, duration);
 
         _startNewDistribution();
 
@@ -240,7 +240,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
 
     /**
      * Sweep any token accidently sent to this contract.
-     * Staked token and rewards token can be sweeped up to the amount stored in the pool.
+     * Staking and rewards tokens can be sweeped up to the amount stored in the pool.
      */
     function sweep(address token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 locked;
@@ -301,7 +301,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
     /**
      * The number of rewards per staked token.
      * Increases every second until end of current distribution.
-     * Do not use _remainingRewards() to be as precise as possible.
+     * Do not use _remainingRewards() to be as precise as possible (do not divide twice by duration).
      */
     function _rewardsPerToken() private view returns (uint256) {
         if (stakedAmountStored == 0) return rewardsPerTokenAcc;
