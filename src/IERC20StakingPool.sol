@@ -11,4 +11,8 @@ interface IERC20StakingPool {
     function claim() external;
     function emergencyWithdraw() external;
     function addRewards(uint256 amount, uint256 duration) external;
+    function removeRewards() external;
+    function pause() external;
+    function unpause() external;
+    function sweep(address token) external;
 }
