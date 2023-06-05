@@ -351,7 +351,11 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
 
     /**
      * Starts a new distribution from now.
-     * - First accumulates the current rewards per token.
+     *
+     * It *must* be used before users stake/unstake tokens or operators add/remove rewards
+     * because it records the rewards per token at this point.
+     *
+     * - First record the current rewards per token.
      * - Set starting time to now.
      * - When the distribution is not active (= there is no token staked) just keep the same
      *   rewards amount and duration.
