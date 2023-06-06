@@ -87,7 +87,7 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.RewardsClaimed(holder, 0);
+        emit RewardsClaimed(holder, 0);
 
         claim(holder);
     }
@@ -103,7 +103,7 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.RewardsClaimed(holder, 1000);
+        emit RewardsClaimed(holder, 1000);
 
         claim(holder);
     }

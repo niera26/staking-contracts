@@ -1,7 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-interface IERC20StakingPool {
+interface IERC20StakingPoolEvents {
+    event TokenStacked(address indexed addr, uint256 amount);
+    event TokenUnstacked(address indexed addr, uint256 amount);
+    event EmergencyWithdraw(address indexed addr, uint256 amount);
+    event RewardsAdded(address indexed addr, uint256 amount, uint256 duration);
+    event RewardsRemoved(address indexed addr, uint256 amount);
+    event RewardsClaimed(address indexed addr, uint256 amount);
+    event Swept(address indexed addr, address token, uint256 amount);
+}
+
+interface IERC20StakingPool is IERC20StakingPoolEvents {
     function remainingRewards() external view returns (uint256);
     function remainingSeconds() external view returns (uint256);
     function staked(address addr) external view returns (uint256);

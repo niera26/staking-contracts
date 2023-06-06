@@ -64,7 +64,7 @@ contract ERC20StakingPoolRemoveRewardsTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.RewardsRemoved(address(this), 500);
+        emit RewardsRemoved(address(this), 500);
 
         poolContract.removeRewards();
     }

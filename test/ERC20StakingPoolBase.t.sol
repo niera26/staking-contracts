@@ -6,7 +6,7 @@ import "openzeppelin/interfaces/IERC20Metadata.sol";
 import "openzeppelin/token/ERC20/ERC20.sol";
 import "openzeppelin/utils/Strings.sol";
 import "../src/ERC20StakingPool.sol";
-import "../src/ERC20StakingPoolEvents.sol";
+import "../src/IERC20StakingPool.sol";
 
 contract ERC20Mock is ERC20 {
     uint8 private _tokenDecimals;
@@ -22,7 +22,7 @@ contract ERC20Mock is ERC20 {
     }
 }
 
-contract ERC20StakingPoolBaseTest is Test {
+contract ERC20StakingPoolBaseTest is Test, IERC20StakingPoolEvents {
     IERC20Metadata internal stakingToken;
     IERC20Metadata internal rewardsToken;
     IERC20Metadata internal randomToken;

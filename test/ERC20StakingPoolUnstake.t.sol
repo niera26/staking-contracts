@@ -63,7 +63,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.TokenUnstacked(holder, 1000);
+        emit TokenUnstacked(holder, 1000);
 
         unstake(holder, 1000);
     }
@@ -177,7 +177,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.RewardsClaimed(holder, 0);
+        emit RewardsClaimed(holder, 0);
 
         unstake(holder, 500);
     }
@@ -193,7 +193,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.RewardsClaimed(holder, 0);
+        emit RewardsClaimed(holder, 0);
 
         unstake(holder, 1000);
     }
@@ -209,7 +209,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.RewardsClaimed(holder, 1000);
+        emit RewardsClaimed(holder, 1000);
 
         unstake(holder, 1000);
     }

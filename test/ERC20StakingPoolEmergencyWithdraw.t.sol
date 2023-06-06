@@ -46,7 +46,7 @@ contract ERC20StakingPoolEmergencyWithdrawTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.EmergencyWithdraw(holder, 1000);
+        emit EmergencyWithdraw(holder, 1000);
 
         vm.prank(holder);
 

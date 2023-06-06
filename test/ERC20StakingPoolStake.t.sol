@@ -55,7 +55,7 @@ contract ERC20StakingPoolStakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.TokenStacked(holder, 1000);
+        emit TokenStacked(holder, 1000);
 
         stake(holder, 1000);
     }

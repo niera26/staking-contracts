@@ -51,7 +51,7 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.Swept(address(this), address(randomToken), 1000);
+        emit Swept(address(this), address(randomToken), 1000);
 
         poolContract.sweep(address(randomToken));
     }
@@ -78,7 +78,7 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.Swept(address(this), address(stakingToken), 10000);
+        emit Swept(address(this), address(stakingToken), 10000);
 
         poolContract.sweep(address(stakingToken));
     }
@@ -121,7 +121,7 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit ERC20StakingPoolEvents.Swept(address(this), address(rewardsToken), 10000);
+        emit Swept(address(this), address(rewardsToken), 10000);
 
         poolContract.sweep(address(rewardsToken));
     }
