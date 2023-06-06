@@ -5,37 +5,34 @@ import "forge-std/Test.sol";
 import "openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin/contracts/utils/Strings.sol";
-import "../src/ERC20StakedTest.sol";
-import "../src/ERC20RewardTest.sol";
 import "../src/ERC20StakingPool.sol";
 import "../src/ERC20StakingPoolEvents.sol";
 
 contract ERC20Mock is ERC20 {
-    uint8 private _decimals;
+    uint8 private _tokenDecimals;
 
-    constructor(string memory name, string memory symbol, uint8 __decimals) ERC20(name, symbol) {
-        _decimals = __decimals;
+    constructor(string memory name, string memory symbol, uint256 totalSupply, uint8 _decimals) ERC20(name, symbol) {
+        _tokenDecimals = _decimals;
 
-        _mint(msg.sender, 10_000_000_000 * (10 ** decimals()));
+        _mint(msg.sender, totalSupply * (10 ** decimals()));
     }
 
     function decimals() public view override returns (uint8) {
-        return _decimals;
+        return _tokenDecimals;
     }
 }
 
 contract ERC20StakingPoolBaseTest is Test {
-    ERC20StakedTest internal stakingToken;
+    IERC20Metadata internal stakingToken;
     IERC20Metadata internal rewardsToken;
     IERC20Metadata internal randomToken;
     ERC20StakingPool internal poolContract;
 
     function setUp() public {
-        stakingToken = new ERC20StakedTest();
-        rewardsToken = new ERC20RewardTest();
-        randomToken = new ERC20Mock("Random token", "RDTT", 18);
+        stakingToken = new ERC20Mock("staking token", "STK", 10_000_000, 18);
+        rewardsToken = new ERC20Mock("rewards token", "RWD", 1_000_000_000, 6);
+        randomToken = new ERC20Mock("random token", "RDTT", 1_000_000, 18);
         poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken), 1_000_000_000, 365 days);
-        stakingToken.mint(1_000_000 * (10 ** stakingToken.decimals()));
 
         poolContract.grantRole(poolContract.OPERATOR_ROLE(), address(this));
     }

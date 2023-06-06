@@ -7,7 +7,7 @@ import {Pausable} from "openzeppelin/contracts/security/Pausable.sol";
 import {ReentrancyGuard} from "openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {SafeERC20} from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20StakingPool} from "./IERC20StakingPool.sol";
-import "./ERC20StakingPoolEvents.sol";
+import {ERC20StakingPoolEvents} from "./ERC20StakingPoolEvents.sol";
 
 contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20Metadata;
