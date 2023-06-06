@@ -2,9 +2,9 @@
 pragma solidity ^0.8.17;
 
 import "forge-std/Test.sol";
-import "openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-import "openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin/contracts/utils/Strings.sol";
+import "openzeppelin/interfaces/IERC20Metadata.sol";
+import "openzeppelin/token/ERC20/ERC20.sol";
+import "openzeppelin/utils/Strings.sol";
 import "../src/ERC20StakingPool.sol";
 import "../src/ERC20StakingPoolEvents.sol";
 
