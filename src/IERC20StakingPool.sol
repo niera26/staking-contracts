@@ -12,6 +12,12 @@ interface IERC20StakingPoolEvents {
 }
 
 interface IERC20StakingPool is IERC20StakingPoolEvents {
+    function maxRewardAmount() external view returns (uint256);
+    function maxRewardDuration() external view returns (uint256);
+    function stakingTokenAddress() external view returns (address);
+    function rewardsTokenAddress() external view returns (address);
+    function stakedAmountStored() external view returns (uint256);
+    function rewardAmountStored() external view returns (uint256);
     function remainingRewards() external view returns (uint256);
     function remainingSeconds() external view returns (uint256);
     function staked(address addr) external view returns (uint256);

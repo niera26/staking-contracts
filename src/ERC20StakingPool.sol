@@ -20,10 +20,6 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
     IERC20Metadata private immutable STAKING_TOKEN;
     IERC20Metadata private immutable REWARDS_TOKEN;
 
-    // both tokens decimals.
-    uint256 public immutable stakingTokenDecimals;
-    uint256 public immutable rewardsTokenDecimals;
-
     // constants used to normalize both tokens to 18 decimals.
     uint256 private immutable stakingScale;
     uint256 private immutable rewardsScale;
@@ -72,8 +68,8 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
         STAKING_TOKEN = IERC20Metadata(_stakingToken);
         REWARDS_TOKEN = IERC20Metadata(_rewardsToken);
 
-        stakingTokenDecimals = STAKING_TOKEN.decimals();
-        rewardsTokenDecimals = REWARDS_TOKEN.decimals();
+        uint8 stakingTokenDecimals = STAKING_TOKEN.decimals();
+        uint8 rewardsTokenDecimals = REWARDS_TOKEN.decimals();
 
         require(stakingTokenDecimals <= 18, "staking token has too much decimals (> 18)");
         require(rewardsTokenDecimals <= 18, "rewards token has too much decimals (> 18)");
@@ -85,6 +81,20 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, Reentra
         maxRewardDuration = _maxRewardDuration;
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
+    /**
+     * Return the address of the staking token.
+     */
+    function stakingTokenAddress() external view returns (address) {
+        return address(STAKING_TOKEN);
+    }
+
+    /**
+     * Return the address of the rewards token.
+     */
+    function rewardsTokenAddress() external view returns (address) {
+        return address(REWARDS_TOKEN);
     }
 
     /**
