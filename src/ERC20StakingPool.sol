@@ -126,6 +126,13 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
+     * Remaining rewards of the given holder.
+     */
+    function remainingRewards(address addr) external view returns (uint256) {
+        return _remainingRewards(addressToStakeData[addr]);
+    }
+
+    /**
      * Add tokens to the stake of the holder.
      */
     function stake(uint256 amount) external nonReentrant whenNotPaused {
@@ -305,6 +312,19 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
         if (duration == 0) return 0;
 
         return (_remainingSeconds() * rewardAmount) / duration;
+    }
+
+    /**
+     * Amount of rewards remaining to be distributed to the given stake.
+     */
+    function _remainingRewards(StakeData memory stakeData) private view returns (uint256) {
+        if (stakeData.amount == 0) return 0;
+
+        uint256 duration = _duration();
+
+        if (duration == 0) return 0;
+
+        return (_remainingSeconds() * rewardAmount * stakeData.amount) / (duration * stakedAmountStored);
     }
 
     /**

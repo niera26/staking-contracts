@@ -24,6 +24,7 @@ interface IERC20StakingPool is IERC20StakingPoolEvents, IAccessControlEnumerable
     function remainingSeconds() external view returns (uint256);
     function staked(address addr) external view returns (uint256);
     function pendingRewards(address addr) external view returns (uint256);
+    function remainingRewards(address addr) external view returns (uint256);
     function stake(uint256 amount) external;
     function unstake(uint256 amount) external;
     function claim() external;
