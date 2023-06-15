@@ -90,10 +90,10 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance + 1000);
     }
 
-    function testAddRewards_emitsRewardsAdded() public {
+    function testAddRewards_emitsAddRewards() public {
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsAdded(address(this), 1000, 10);
+        emit AddRewards(address(this), 1000, 10);
 
         addRewards(1000, 10);
     }

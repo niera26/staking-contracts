@@ -4,13 +4,13 @@ pragma solidity ^0.8.17;
 import {IAccessControlEnumerable} from "openzeppelin/access/IAccessControlEnumerable.sol";
 
 interface IERC20StakingPoolEvents {
-    event TokenStacked(address indexed addr, uint256 amount);
-    event TokenUnstacked(address indexed addr, uint256 amount);
+    event Stake(address indexed addr, uint256 amount);
+    event Unstake(address indexed addr, uint256 amount);
     event EmergencyWithdraw(address indexed addr, uint256 amount);
-    event RewardsAdded(address indexed addr, uint256 amount, uint256 duration);
-    event RewardsRemoved(address indexed addr, uint256 amount);
-    event RewardsClaimed(address indexed addr, uint256 amount);
-    event Swept(address indexed addr, address token, uint256 amount);
+    event AddRewards(address indexed addr, uint256 amount, uint256 duration);
+    event RemoveRewards(address indexed addr, uint256 amount);
+    event Claim(address indexed addr, uint256 amount);
+    event Sweep(address indexed addr, address token, uint256 amount);
 }
 
 interface IERC20StakingPool is IERC20StakingPoolEvents, IAccessControlEnumerable {

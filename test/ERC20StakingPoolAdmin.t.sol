@@ -46,12 +46,12 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
         assertEq(randomToken.balanceOf(address(this)), ownerOriginalBalance + 1000);
     }
 
-    function testSweep_emitsSweptForRandomToken() public {
+    function testSweep_emitsSweepForRandomToken() public {
         randomToken.transfer(address(poolContract), 1000);
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit Swept(address(this), address(randomToken), 1000);
+        emit Sweep(address(this), address(randomToken), 1000);
 
         poolContract.sweep(address(randomToken));
     }
@@ -71,14 +71,14 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
         assertEq(stakingToken.balanceOf(address(poolContract)), contractOriginalBalance - 10000);
     }
 
-    function testSweep_emitsSweptForStakingToken() public {
+    function testSweep_emitsSweepForStakingToken() public {
         stake(vm.addr(1), 1000);
 
         stakingToken.transfer(address(poolContract), 10000);
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit Swept(address(this), address(stakingToken), 10000);
+        emit Sweep(address(this), address(stakingToken), 10000);
 
         poolContract.sweep(address(stakingToken));
     }
@@ -106,7 +106,7 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 10000);
     }
 
-    function testSweep_emitsSweptForRewardsToken() public {
+    function testSweep_emitsSweepForRewardsToken() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -121,7 +121,7 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit Swept(address(this), address(rewardsToken), 10000);
+        emit Sweep(address(this), address(rewardsToken), 10000);
 
         poolContract.sweep(address(rewardsToken));
     }

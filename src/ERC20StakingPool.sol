@@ -209,7 +209,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
 
         rewardAmountStored += amount;
         REWARDS_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
-        emit RewardsAdded(msg.sender, amount, duration);
+        emit AddRewards(msg.sender, amount, duration);
     }
 
     /**
@@ -229,7 +229,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
 
             rewardAmountStored -= amount;
             REWARDS_TOKEN.safeTransfer(msg.sender, amount);
-            emit RewardsRemoved(msg.sender, amount);
+            emit RemoveRewards(msg.sender, amount);
         }
     }
 
@@ -267,7 +267,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
 
         IERC20Metadata(token).safeTransfer(msg.sender, amount);
 
-        emit Swept(msg.sender, token, amount);
+        emit Sweep(msg.sender, token, amount);
     }
 
     /**
@@ -395,7 +395,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
         stakeData.amount += amount;
         stakedAmountStored += amount;
         STAKING_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
-        emit TokenStacked(msg.sender, amount);
+        emit Stake(msg.sender, amount);
     }
 
     /**
@@ -409,7 +409,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
         stakeData.amount -= amount;
         stakedAmountStored -= amount;
         STAKING_TOKEN.safeTransfer(msg.sender, amount);
-        emit TokenUnstacked(msg.sender, amount);
+        emit Unstake(msg.sender, amount);
     }
 
     /**
@@ -424,7 +424,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
             stakeData.earned = 0;
             rewardAmountStored -= earned;
             REWARDS_TOKEN.safeTransfer(msg.sender, earned);
-            emit RewardsClaimed(msg.sender, earned);
+            emit Claim(msg.sender, earned);
         }
     }
 }

@@ -50,12 +50,12 @@ contract ERC20StakingPoolStakeTest is ERC20StakingPoolBaseTest {
         assertEq(stakingToken.balanceOf(address(poolContract)), contractOriginalBalance + 1000);
     }
 
-    function testStake_emitsTokenStaked() public {
+    function testStake_emitsStake() public {
         address holder = vm.addr(1);
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit TokenStacked(holder, 1000);
+        emit Stake(holder, 1000);
 
         stake(holder, 1000);
     }

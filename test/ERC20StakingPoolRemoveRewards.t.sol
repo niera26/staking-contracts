@@ -55,7 +55,7 @@ contract ERC20StakingPoolRemoveRewardsTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 500);
     }
 
-    function testRemoveRewards_emitsRewardsRemoved() public {
+    function testRemoveRewards_emitsRemoveRewards() public {
         stake(vm.addr(1), 1000);
 
         addRewards(1000, 10);
@@ -64,7 +64,7 @@ contract ERC20StakingPoolRemoveRewardsTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsRemoved(address(this), 500);
+        emit RemoveRewards(address(this), 500);
 
         poolContract.removeRewards();
     }

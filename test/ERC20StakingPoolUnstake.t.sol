@@ -56,14 +56,14 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
         assertEq(stakingToken.balanceOf(address(poolContract)), contractOriginalBalance - 1000);
     }
 
-    function testUnstake_emitsTokenUnstaked() public {
+    function testUnstake_emitsUnstake() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit TokenUnstacked(holder, 1000);
+        emit Unstake(holder, 1000);
 
         unstake(holder, 1000);
     }
@@ -166,7 +166,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 500);
     }
 
-    function testFailUnstakeSome_emitsRewardsClaimed() public {
+    function testFailUnstakeSome_emitsClaim() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -177,12 +177,12 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsClaimed(holder, 0);
+        emit Claim(holder, 0);
 
         unstake(holder, 500);
     }
 
-    function testFailUnstakeAll_emitsRewardsClaimedWhenHolderHasNoReward() public {
+    function testFailUnstakeAll_emitsClaimWhenHolderHasNoReward() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -193,12 +193,12 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsClaimed(holder, 0);
+        emit Claim(holder, 0);
 
         unstake(holder, 1000);
     }
 
-    function testUnstakeAll_emitsRewardsClaimedWhenHolderHasRewards() public {
+    function testUnstakeAll_emitsClaimWhenHolderHasRewards() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -209,7 +209,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsClaimed(holder, 1000);
+        emit Claim(holder, 1000);
 
         unstake(holder, 1000);
     }

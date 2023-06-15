@@ -76,7 +76,7 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 1000);
     }
 
-    function testFailClaim_emitsRewardsClaimedWhenHolderHasNoReward() public {
+    function testFailClaim_emitsClaimWhenHolderHasNoReward() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -87,12 +87,12 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsClaimed(holder, 0);
+        emit Claim(holder, 0);
 
         claim(holder);
     }
 
-    function testClaim_emitsRewardsClaimedWhenHolderHasRewards() public {
+    function testClaim_emitsClaimWhenHolderHasRewards() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -103,7 +103,7 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit RewardsClaimed(holder, 1000);
+        emit Claim(holder, 1000);
 
         claim(holder);
     }
