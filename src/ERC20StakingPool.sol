@@ -13,34 +13,33 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
 
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
-    // constant used to prevent divisions rounding to zero.
-    uint256 private constant precision = 1e18;
+    // max amount and duration for a distribution.
+    uint256 public immutable maxRewardAmount;
+    uint256 public immutable maxRewardDuration;
 
     // staking and rewards tokens.
     IERC20Metadata private immutable STAKING_TOKEN;
     IERC20Metadata private immutable REWARDS_TOKEN;
 
+    // amount of both tokens stored in the pool (!= contract balance).
+    // allows to sweep accidental transfer to the contract.
+    // stacked amount is used for the rewards per token computation.
+    uint256 private _stakedAmountStored;
+    uint256 private _rewardAmountStored;
+
+    // constant used to prevent divisions rounding to zero.
+    uint256 private constant precision = 1e18;
+
     // constants used to normalize both tokens to 18 decimals.
     uint256 private immutable stakingScale;
     uint256 private immutable rewardsScale;
 
-    // max amount and duration for a distribution.
-    uint256 public immutable maxRewardAmount;
-    uint256 public immutable maxRewardDuration;
-
-    // numbers of both tokens stored in the pool (!= contract balance).
-    // allows to sweep accidental transfer to the contract.
-    // stacked amount is used for the rewards per token computation.
-    uint256 public stakedAmountStored;
-    uint256 public rewardAmountStored;
-
     // ever growing accumulated number of rewards per staked token.
-    // every time a new distribiton starts, its rewards per token value
-    // is added to this.
+    // at every checkpoint, the distributed rewards per staked tokens is added to this value.
     uint256 private rewardsPerTokenAcc;
 
     // amount of rewards being distributed between starting and ending times.
-    uint256 private rewardAmount;
+    uint256 private totalRewards;
     uint256 private startingTime;
     uint256 private endingTime;
 
@@ -59,20 +58,31 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     error RewardAmountTooLarge(uint256 max, uint256 amount);
     error RewardDurationTooLarge(uint256 max, uint256 amount);
     error InsufficientStakedAmount(uint256 staked, uint256 amount);
+    error TokenHasMoreThan18Decimals(address token, uint8 decimals);
 
     /**
      * - deployer gets granted admin role.
      * - both tokens must have less than 18 decimals.
      */
-    constructor(address _stakingToken, address _rewardsToken, uint256 _maxRewardAmount, uint256 _maxRewardDuration) {
-        STAKING_TOKEN = IERC20Metadata(_stakingToken);
-        REWARDS_TOKEN = IERC20Metadata(_rewardsToken);
+    constructor(
+        address _stakingTokenAddress,
+        address _rewardsTokenAddress,
+        uint256 _maxRewardAmount,
+        uint256 _maxRewardDuration
+    ) {
+        STAKING_TOKEN = IERC20Metadata(_stakingTokenAddress);
+        REWARDS_TOKEN = IERC20Metadata(_rewardsTokenAddress);
 
         uint8 stakingTokenDecimals = STAKING_TOKEN.decimals();
         uint8 rewardsTokenDecimals = REWARDS_TOKEN.decimals();
 
-        require(stakingTokenDecimals <= 18, "staking token has too much decimals (> 18)");
-        require(rewardsTokenDecimals <= 18, "rewards token has too much decimals (> 18)");
+        if (stakingTokenDecimals > 18) {
+            revert TokenHasMoreThan18Decimals(_stakingTokenAddress, stakingTokenDecimals);
+        }
+
+        if (rewardsTokenDecimals > 18) {
+            revert TokenHasMoreThan18Decimals(_rewardsTokenAddress, rewardsTokenDecimals);
+        }
 
         stakingScale = 10 ** (18 - stakingTokenDecimals);
         rewardsScale = 10 ** (18 - rewardsTokenDecimals);
@@ -84,17 +94,31 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * Return the address of the staking token.
+     * The address of the staking token.
      */
     function stakingTokenAddress() external view returns (address) {
         return address(STAKING_TOKEN);
     }
 
     /**
-     * Return the address of the rewards token.
+     * The address of the rewards token.
      */
     function rewardsTokenAddress() external view returns (address) {
         return address(REWARDS_TOKEN);
+    }
+
+    /**
+     * The staked amount stored.
+     */
+    function stakedAmountStored() external view returns (uint256) {
+        return _stakedAmountStored;
+    }
+
+    /**
+     * The reward amount stored.
+     */
+    function rewardAmountStored() external view returns (uint256) {
+        return _rewardAmountStored;
     }
 
     /**
@@ -119,21 +143,21 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * Pending rewards of the given holder.
+     * Pending rewards of the given address.
      */
     function pendingRewards(address addr) external view returns (uint256) {
         return _pendingRewards(addressToStakeData[addr], _rewardsPerToken());
     }
 
     /**
-     * Remaining rewards of the given holder.
+     * Remaining rewards of the given address.
      */
     function remainingRewards(address addr) external view returns (uint256) {
         return _remainingRewards(addressToStakeData[addr]);
     }
 
     /**
-     * Add tokens to the stake of the holder.
+     * Add tokens to the stake of the given address.
      */
     function stake(uint256 amount) external nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
@@ -145,9 +169,9 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * Remove tokens from the stake of the holder.
+     * Remove tokens from the stake of the given address.
      *
-     * Automatically claim the rewards when everything is unstaked.
+     * Automatically claim the pending rewards when everything is unstaked.
      */
     function unstake(uint256 amount) external nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
@@ -167,7 +191,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * Claim all rewards earned by the holder.
+     * Claim pending rewards of the sender.
      */
     function claim() external nonReentrant whenNotPaused {
         StakeData storage stakeData = addressToStakeData[msg.sender];
@@ -177,7 +201,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * Allow to withdraw staked tokens without claming rewards, in case of emergency.
+     * Withdraw staked tokens of the sender without claming rewards, in case of emergency.
      */
     function emergencyWithdraw() external nonReentrant whenNotPaused {
         StakeData storage stakeData = addressToStakeData[msg.sender];
@@ -190,8 +214,8 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
         stakeData.amount = 0;
         stakeData.earned = 0;
 
-        stakedAmountStored -= amount;
-        rewardAmountStored -= earned;
+        _stakedAmountStored -= amount;
+        _rewardAmountStored -= earned;
 
         STAKING_TOKEN.safeTransfer(msg.sender, amount);
 
@@ -199,7 +223,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * Starts a new distribution and adds the given rewards for the given duration.
+     * Adds the given rewards for the given duration.
      *
      * It *must* be used to add rewards to the pool.
      */
@@ -209,32 +233,32 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
         if (amount > maxRewardAmount) revert RewardAmountTooLarge(maxRewardAmount, amount);
         if (duration > maxRewardDuration) revert RewardDurationTooLarge(maxRewardDuration, duration);
 
-        _startNewDistribution();
+        _checkpoint();
 
-        rewardAmount += amount;
+        totalRewards += amount;
         endingTime += duration;
 
-        rewardAmountStored += amount;
+        _rewardAmountStored += amount;
         REWARDS_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
         emit AddRewards(msg.sender, amount, duration);
     }
 
     /**
-     * Transfers back all currently distributed rewards.
+     * Transfers back all remaining rewards.
      *
      * It *must* be used to remove rewards from the pool.
      */
     function removeRewards() external onlyRole(OPERATOR_ROLE) {
-        _startNewDistribution();
+        _checkpoint();
 
-        uint256 amount = rewardAmount;
+        uint256 amount = totalRewards;
 
         if (amount > 0) {
-            rewardAmount = 0;
+            totalRewards = 0;
             startingTime = block.timestamp;
             endingTime = block.timestamp;
 
-            rewardAmountStored -= amount;
+            _rewardAmountStored -= amount;
             REWARDS_TOKEN.safeTransfer(msg.sender, amount);
             emit RemoveRewards(msg.sender, amount);
         }
@@ -255,22 +279,23 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * Sweep any token accidently sent to this contract.
-     * Staking and rewards tokens can be sweeped up to the amount stored in the pool.
+     * Sweep balance of any token accidently sent to this contract.
+     *
+     * Staking and rewards tokens can be swept up to the amount stored in the pool.
      */
     function sweep(address token) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint256 locked;
+        uint256 stored;
         uint256 balance = IERC20Metadata(token).balanceOf(address(this));
 
         if (token == address(STAKING_TOKEN)) {
-            locked = stakedAmountStored;
+            stored = _stakedAmountStored;
         } else if (token == address(REWARDS_TOKEN)) {
-            locked = rewardAmountStored;
+            stored = _rewardAmountStored;
         } else {
-            locked = 0;
+            stored = 0;
         }
 
-        uint256 amount = balance - locked;
+        uint256 amount = balance - stored;
 
         IERC20Metadata(token).safeTransfer(msg.sender, amount);
 
@@ -278,7 +303,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * The duration of the current distribution.
+     * The duration of the distribution.
      */
     function _duration() private view returns (uint256) {
         if (endingTime < startingTime) return 0;
@@ -287,12 +312,12 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * The number of seconds until the end of the current distribution.
+     * The number of seconds until the end of the distribution.
      *
-     * Returns current duration when the pool is inactive (no stake).
+     * Returns duration when the pool is inactive (no stake).
      */
     function _remainingSeconds() private view returns (uint256) {
-        if (stakedAmountStored == 0) return _duration();
+        if (_stakedAmountStored == 0) return _duration();
 
         if (endingTime < block.timestamp) return 0;
 
@@ -300,18 +325,18 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * Amount of rewards remaining to be distributed for the current distribution.
+     * Amount of rewards remaining to be distributed.
      *
-     * Returns current reward amount when the pool is inactive (no stake).
+     * Returns total rewards when the pool is inactive (no stake).
      */
     function _remainingRewards() private view returns (uint256) {
-        if (stakedAmountStored == 0) return rewardAmount;
+        if (_stakedAmountStored == 0) return totalRewards;
 
         uint256 duration = _duration();
 
         if (duration == 0) return 0;
 
-        return (_remainingSeconds() * rewardAmount) / duration;
+        return (_remainingSeconds() * totalRewards) / duration;
     }
 
     /**
@@ -324,28 +349,28 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
 
         if (duration == 0) return 0;
 
-        return (_remainingSeconds() * rewardAmount * stakeData.amount) / (duration * stakedAmountStored);
+        return (_remainingSeconds() * totalRewards * stakeData.amount) / (duration * _stakedAmountStored);
     }
 
     /**
      * The number of rewards per staked token.
-     * Increases every second until end of current distribution.
+     * Increases every second until end of distribution.
      * Do not use _remainingRewards() to be as precise as possible (do not divide twice by duration).
      */
     function _rewardsPerToken() private view returns (uint256) {
-        if (stakedAmountStored == 0) return rewardsPerTokenAcc;
+        if (_stakedAmountStored == 0) return rewardsPerTokenAcc;
 
         uint256 duration = _duration();
 
         if (duration == 0) return rewardsPerTokenAcc;
 
-        uint256 locTotalRewards = rewardAmount * _duration();
-        uint256 locRemainingRewards = rewardAmount * _remainingSeconds();
+        uint256 locTotalRewards = totalRewards * _duration();
+        uint256 locRemainingRewards = totalRewards * _remainingSeconds();
 
         if (locTotalRewards < locRemainingRewards) return rewardsPerTokenAcc;
 
         uint256 distributedRewards = locTotalRewards - locRemainingRewards;
-        uint256 scaledStakedAmount = stakedAmountStored * stakingScale * duration;
+        uint256 scaledStakedAmount = _stakedAmountStored * stakingScale * duration;
         uint256 scaledDistributedRewards = distributedRewards * rewardsScale * precision;
 
         return rewardsPerTokenAcc + (scaledDistributedRewards / scaledStakedAmount);
@@ -379,7 +404,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * Starts a new distribution from now.
+     * Checkpoint the distribution.
      *
      * It *must* be used before users stake/unstake tokens or operators add/remove rewards
      * because it records the rewards per token at this point.
@@ -387,16 +412,16 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
      * - First record the current rewards per token.
      * - Set starting time to now.
      * - When the distribution is not active (= there is no token staked) just keep the same
-     *   rewards amount and duration.
-     * - When the distribution is active (= there is staked tokens) set rewards amount as
-     *   remaining rewards and duration as remaining seconds.
+     *   total rewards and duration.
+     * - When the distribution is active (= there is staked tokens) set total rewards as the
+     *   remaining rewards and duration as the remaining seconds.
      */
-    function _startNewDistribution() private {
+    function _checkpoint() private {
         rewardsPerTokenAcc = _rewardsPerToken();
 
-        bool isActive = stakedAmountStored > 0;
+        bool isActive = _stakedAmountStored > 0;
 
-        if (isActive) rewardAmount = _remainingRewards();
+        if (isActive) totalRewards = _remainingRewards();
 
         uint256 duration = isActive ? _remainingSeconds() : _duration();
 
@@ -405,35 +430,35 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     }
 
     /**
-     * Starts a new distribution and increase the total amount of staked tokens.
+     * Increases the total amount of staked tokens.
      *
      * It *must* be used to add staking tokens to the pool.
      */
     function _increaseTotalStaked(StakeData storage stakeData, uint256 amount) private {
-        _startNewDistribution();
+        _checkpoint();
 
         stakeData.amount += amount;
-        stakedAmountStored += amount;
+        _stakedAmountStored += amount;
         STAKING_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
         emit Stake(msg.sender, amount);
     }
 
     /**
-     * Starts a new distribution and decrease the total amount of staked tokens.
+     * Decreases the total amount of staked tokens.
      *
      * It *must* be used to remove staking tokens from the pool.
      */
     function _decreaseTotalStaked(StakeData storage stakeData, uint256 amount) private {
-        _startNewDistribution();
+        _checkpoint();
 
         stakeData.amount -= amount;
-        stakedAmountStored -= amount;
+        _stakedAmountStored -= amount;
         STAKING_TOKEN.safeTransfer(msg.sender, amount);
         emit Unstake(msg.sender, amount);
     }
 
     /**
-     * Transfers to the given stake the rewards it earned.
+     * Transfers the rewards earned by the given stake.
      *
      * It *must* be used to remove stake rewards from the pool.
      */
@@ -442,7 +467,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
 
         if (earned > 0) {
             stakeData.earned = 0;
-            rewardAmountStored -= earned;
+            _rewardAmountStored -= earned;
             REWARDS_TOKEN.safeTransfer(msg.sender, earned);
             emit Claim(msg.sender, earned);
         }
