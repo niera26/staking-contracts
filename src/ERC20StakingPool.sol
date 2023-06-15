@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import {AccessControlDefaultAdminRules} from "openzeppelin/access/AccessControlDefaultAdminRules.sol";
 import {AccessControlEnumerable} from "openzeppelin/access/AccessControlEnumerable.sol";
 import {IERC20Metadata} from "openzeppelin/interfaces/IERC20Metadata.sol";
 import {Pausable} from "openzeppelin/security/Pausable.sol";
@@ -8,7 +9,7 @@ import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {IERC20StakingPool} from "./IERC20StakingPool.sol";
 
-contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausable, ReentrancyGuard {
+contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20Metadata;
 
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
@@ -59,7 +60,9 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
      * - deployer gets granted admin role.
      * - both tokens must have less than 18 decimals.
      */
-    constructor(address _stakingTokenAddress, address _rewardsTokenAddress) {
+    constructor(address _stakingTokenAddress, address _rewardsTokenAddress)
+        AccessControlDefaultAdminRules(1, msg.sender)
+    {
         STAKING_TOKEN = IERC20Metadata(_stakingTokenAddress);
         REWARDS_TOKEN = IERC20Metadata(_rewardsTokenAddress);
 
@@ -76,8 +79,6 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
 
         stakingTokenScale = 10 ** (18 - stakingTokenDecimals);
         rewardsTokenScale = 10 ** (18 - rewardsTokenDecimals);
-
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
