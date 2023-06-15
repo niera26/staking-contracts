@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {IAccessControl} from "openzeppelin/access/IAccessControl.sol";
+import {IAccessControlDefaultAdminRules} from "openzeppelin/access/IAccessControlDefaultAdminRules.sol";
 
 interface IERC20StakingPoolEvents {
     event Stake(address indexed addr, uint256 amount);
@@ -13,7 +13,7 @@ interface IERC20StakingPoolEvents {
     event Sweep(address indexed addr, address token, uint256 amount);
 }
 
-interface IERC20StakingPool is IERC20StakingPoolEvents, IAccessControl {
+interface IERC20StakingPool is IERC20StakingPoolEvents, IAccessControlDefaultAdminRules {
     function stakingTokenAddress() external view returns (address);
     function rewardsTokenAddress() external view returns (address);
     function stakedAmountStored() external view returns (uint256);
