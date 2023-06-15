@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {AccessControl} from "openzeppelin/access/AccessControl.sol";
+import {AccessControlEnumerable} from "openzeppelin/access/AccessControlEnumerable.sol";
 import {IERC20Metadata} from "openzeppelin/interfaces/IERC20Metadata.sol";
 import {Pausable} from "openzeppelin/security/Pausable.sol";
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {IERC20StakingPool} from "./IERC20StakingPool.sol";
 
-contract ERC20StakingPool is IERC20StakingPool, AccessControl, Pausable, ReentrancyGuard {
+contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20Metadata;
 
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
