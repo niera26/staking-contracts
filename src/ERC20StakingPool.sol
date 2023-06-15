@@ -13,10 +13,6 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
 
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
-    // max amount and duration for a distribution.
-    uint256 public immutable maxRewardAmount;
-    uint256 public immutable maxRewardDuration;
-
     // staking and rewards tokens.
     IERC20Metadata private immutable STAKING_TOKEN;
     IERC20Metadata private immutable REWARDS_TOKEN;
@@ -31,8 +27,8 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     uint256 private constant precision = 1e18;
 
     // constants used to normalize both tokens to 18 decimals.
-    uint256 private immutable stakingScale;
-    uint256 private immutable rewardsScale;
+    uint256 private immutable stakingTokenScale;
+    uint256 private immutable rewardsTokenScale;
 
     // ever growing accumulated number of rewards per staked token.
     // at every checkpoint, the distributed rewards per staked tokens is added to this value.
@@ -55,8 +51,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     // errors.
     error ZeroAmount();
     error ZeroDuration();
-    error RewardAmountTooLarge(uint256 max, uint256 amount);
-    error RewardDurationTooLarge(uint256 max, uint256 amount);
+    error DistributionTooLarge(uint256 amount, uint256 duration);
     error InsufficientStakedAmount(uint256 staked, uint256 amount);
     error TokenHasMoreThan18Decimals(address token, uint8 decimals);
 
@@ -64,12 +59,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
      * - deployer gets granted admin role.
      * - both tokens must have less than 18 decimals.
      */
-    constructor(
-        address _stakingTokenAddress,
-        address _rewardsTokenAddress,
-        uint256 _maxRewardAmount,
-        uint256 _maxRewardDuration
-    ) {
+    constructor(address _stakingTokenAddress, address _rewardsTokenAddress) {
         STAKING_TOKEN = IERC20Metadata(_stakingTokenAddress);
         REWARDS_TOKEN = IERC20Metadata(_rewardsTokenAddress);
 
@@ -84,11 +74,8 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
             revert TokenHasMoreThan18Decimals(_rewardsTokenAddress, rewardsTokenDecimals);
         }
 
-        stakingScale = 10 ** (18 - stakingTokenDecimals);
-        rewardsScale = 10 ** (18 - rewardsTokenDecimals);
-
-        maxRewardAmount = _maxRewardAmount * (10 ** rewardsTokenDecimals);
-        maxRewardDuration = _maxRewardDuration;
+        stakingTokenScale = 10 ** (18 - stakingTokenDecimals);
+        rewardsTokenScale = 10 ** (18 - rewardsTokenDecimals);
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -230,13 +217,22 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
     function addRewards(uint256 amount, uint256 duration) external onlyRole(OPERATOR_ROLE) {
         if (amount == 0) revert ZeroAmount();
         if (duration == 0) revert ZeroDuration();
-        if (amount > maxRewardAmount) revert RewardAmountTooLarge(maxRewardAmount, amount);
-        if (duration > maxRewardDuration) revert RewardDurationTooLarge(maxRewardDuration, duration);
 
         _checkpoint();
 
         totalRewards += amount;
         endingTime += duration;
+
+        // @see _rewardsPerToken()
+        // max value of denominator is (totalSupply * stakingTokenScale * totalDuration)
+        // max value of numerator is (totalRewards * rewardsTokenScale * precision * totalDuration)
+        uint256 totalDuration = _duration();
+        if (totalDuration > type(uint256).max / (STAKING_TOKEN.totalSupply() * stakingTokenScale)) {
+            revert DistributionTooLarge(amount, duration);
+        }
+        if (totalDuration > type(uint256).max / (totalRewards * rewardsTokenScale * precision)) {
+            revert DistributionTooLarge(amount, duration);
+        }
 
         _rewardAmountStored += amount;
         REWARDS_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
@@ -370,8 +366,8 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
         if (locTotalRewards < locRemainingRewards) return rewardsPerTokenAcc;
 
         uint256 distributedRewards = locTotalRewards - locRemainingRewards;
-        uint256 scaledStakedAmount = _stakedAmountStored * stakingScale * duration;
-        uint256 scaledDistributedRewards = distributedRewards * rewardsScale * precision;
+        uint256 scaledStakedAmount = _stakedAmountStored * stakingTokenScale * duration;
+        uint256 scaledDistributedRewards = distributedRewards * rewardsTokenScale * precision;
 
         return rewardsPerTokenAcc + (scaledDistributedRewards / scaledStakedAmount);
     }
@@ -386,9 +382,9 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlEnumerable, Pausabl
 
         uint256 rewardsPerTokenDiff = rewardsPerToken - stakeData.lastRewardsPerToken;
 
-        uint256 stakeRewards = rewardsPerTokenDiff * stakeData.amount * stakingScale;
+        uint256 stakeRewards = rewardsPerTokenDiff * stakeData.amount * stakingTokenScale;
 
-        return stakeData.earned + (stakeRewards / (rewardsScale * precision));
+        return stakeData.earned + (stakeRewards / (rewardsTokenScale * precision));
     }
 
     /**

@@ -13,14 +13,6 @@ contract ERC20StakingPoolGettersTest is ERC20StakingPoolBaseTest {
         assertEq(poolContract.rewardsTokenAddress(), address(rewardsToken));
     }
 
-    function testMaxRewardAmount() public {
-        assertEq(poolContract.maxRewardAmount(), 1_000_000_000 * (10 ** rewardsToken.decimals()));
-    }
-
-    function testMaxRewardDuration() public {
-        assertEq(poolContract.maxRewardDuration(), 365 days);
-    }
-
     function testStakedAmountStored() public {
         address holder = vm.addr(1);
 

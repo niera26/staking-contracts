@@ -21,26 +21,6 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 1000);
     }
 
-    function testAddRewards_allowsToAddExactMaxRewardsAmount() public {
-        uint256 amount = poolContract.maxRewardAmount();
-
-        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
-
-        addRewards(amount, 10);
-
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + amount);
-    }
-
-    function testAddRewards_allowsToAddExactMaxRewardsDuration() public {
-        uint256 duration = poolContract.maxRewardDuration();
-
-        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
-
-        addRewards(1000, duration);
-
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 1000);
-    }
-
     function testAddRewards_increasesTotalRewards() public {
         uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
 
@@ -148,28 +128,6 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         vm.expectRevert(ERC20StakingPool.ZeroDuration.selector);
 
         poolContract.addRewards(1000, 0);
-    }
-
-    function testAddRewards_revertsRewardsAmountTooLarge() public {
-        uint256 amount = poolContract.maxRewardAmount();
-
-        rewardsToken.approve(address(poolContract), amount + 1);
-
-        vm.expectRevert(abi.encodeWithSelector(ERC20StakingPool.RewardAmountTooLarge.selector, amount, amount + 1));
-
-        poolContract.addRewards(amount + 1, 10);
-    }
-
-    function testAddRewards_revertsRewardsDurationTooLarge() public {
-        uint256 duration = poolContract.maxRewardDuration();
-
-        rewardsToken.approve(address(poolContract), 1000);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(ERC20StakingPool.RewardDurationTooLarge.selector, duration, duration + 1)
-        );
-
-        poolContract.addRewards(1000, duration + 1);
     }
 
     function testAddRewards_revertsInsufficientAllowance() public {

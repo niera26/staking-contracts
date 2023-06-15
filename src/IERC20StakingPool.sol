@@ -14,8 +14,6 @@ interface IERC20StakingPoolEvents {
 }
 
 interface IERC20StakingPool is IERC20StakingPoolEvents, IAccessControlEnumerable {
-    function maxRewardAmount() external view returns (uint256);
-    function maxRewardDuration() external view returns (uint256);
     function stakingTokenAddress() external view returns (address);
     function rewardsTokenAddress() external view returns (address);
     function stakedAmountStored() external view returns (uint256);

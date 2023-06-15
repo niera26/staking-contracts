@@ -32,7 +32,7 @@ contract ERC20StakingPoolBaseTest is Test, IERC20StakingPoolEvents {
         stakingToken = new ERC20Mock("staking token", "STK", 10_000_000, 18);
         rewardsToken = new ERC20Mock("rewards token", "RWD", 1_000_000_000, 6);
         randomToken = new ERC20Mock("random token", "RDTT", 1_000_000, 18);
-        poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken), 1_000_000_000, 365 days);
+        poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken));
 
         poolContract.grantRole(poolContract.OPERATOR_ROLE(), address(this));
     }
