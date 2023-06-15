@@ -60,8 +60,8 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
      * - deployer gets granted admin role.
      * - both tokens must have less than 18 decimals.
      */
-    constructor(address _stakingTokenAddress, address _rewardsTokenAddress)
-        AccessControlDefaultAdminRules(1, msg.sender)
+    constructor(address _stakingTokenAddress, address _rewardsTokenAddress, uint48 initialDelay)
+        AccessControlDefaultAdminRules(initialDelay, msg.sender)
     {
         STAKING_TOKEN = IERC20Metadata(_stakingTokenAddress);
         REWARDS_TOKEN = IERC20Metadata(_rewardsTokenAddress);
