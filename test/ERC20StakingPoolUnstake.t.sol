@@ -5,6 +5,9 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
+    event Unstake(address indexed addr, uint256 amount);
+    event Claim(address indexed addr, uint256 amount);
+
     function testUnstake_decreasesHolderStake() public {
         address holder = vm.addr(1);
 

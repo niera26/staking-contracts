@@ -5,6 +5,8 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
+    event Sweep(address indexed addr, address token, uint256 amount);
+
     function testPause_canBeCalledByOwner() public {
         poolContract.pause();
     }

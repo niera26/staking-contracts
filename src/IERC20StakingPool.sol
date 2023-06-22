@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {IAccessControlDefaultAdminRules} from "openzeppelin/access/IAccessControlDefaultAdminRules.sol";
 
-interface IERC20StakingPoolEvents {
+interface IERC20StakingPool is IAccessControlDefaultAdminRules {
     event Stake(address indexed addr, uint256 amount);
     event Unstake(address indexed addr, uint256 amount);
     event EmergencyWithdraw(address indexed addr, uint256 amount);
@@ -11,9 +11,7 @@ interface IERC20StakingPoolEvents {
     event RemoveRewards(address indexed addr, uint256 amount);
     event Claim(address indexed addr, uint256 amount);
     event Sweep(address indexed addr, address token, uint256 amount);
-}
 
-interface IERC20StakingPool is IERC20StakingPoolEvents, IAccessControlDefaultAdminRules {
     function stakingTokenAddress() external view returns (address);
     function rewardsTokenAddress() external view returns (address);
     function stakedAmountStored() external view returns (uint256);
