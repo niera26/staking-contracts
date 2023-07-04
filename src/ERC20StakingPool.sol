@@ -33,7 +33,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
 
     // ever growing accumulated number of rewards per staked token.
     // at every checkpoint, the distributed rewards per staked tokens is added to this value.
-    uint256 private rewardsPerTokenAcc;
+    uint256 private rewardsPerTokenStored;
 
     // amount of rewards being distributed between starting and ending times.
     uint256 private totalRewards;
@@ -58,7 +58,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
 
     /**
      * - deployer gets granted admin role.
-     * - both tokens must have less than 18 decimals.
+     * - both tokens must have 18 decimals at most.
      */
     constructor(address _stakingTokenAddress, address _rewardsTokenAddress, uint48 initialDelay)
         AccessControlDefaultAdminRules(initialDelay, msg.sender)
@@ -117,7 +117,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     }
 
     /**
-     * Seconds remaining for this distribution.
+     * Seconds remaining before end of distribution.
      */
     function remainingSeconds() external view returns (uint256) {
         return _remainingSeconds();
@@ -145,7 +145,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     }
 
     /**
-     * Add tokens to the stake of the given address.
+     * Add tokens to the stake of the sender.
      */
     function stake(uint256 amount) external nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
@@ -157,7 +157,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     }
 
     /**
-     * Remove tokens from the stake of the given address.
+     * Remove tokens from the stake of the sender.
      *
      * Automatically claim the pending rewards when everything is unstaked.
      */
@@ -281,18 +281,15 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
      * Staking and rewards tokens can be swept up to the amount stored in the pool.
      */
     function sweep(address token) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint256 stored;
-        uint256 balance = IERC20Metadata(token).balanceOf(address(this));
+        uint256 amount = IERC20Metadata(token).balanceOf(address(this));
 
         if (token == address(STAKING_TOKEN)) {
-            stored = _stakedAmountStored;
-        } else if (token == address(REWARDS_TOKEN)) {
-            stored = _rewardAmountStored;
-        } else {
-            stored = 0;
+            amount -= _stakedAmountStored;
         }
 
-        uint256 amount = balance - stored;
+        if (token == address(REWARDS_TOKEN)) {
+            amount -= _rewardAmountStored;
+        }
 
         IERC20Metadata(token).safeTransfer(msg.sender, amount);
 
@@ -355,22 +352,22 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
      * Do not use _remainingRewards() to be as precise as possible (do not divide twice by duration).
      */
     function _rewardsPerToken() private view returns (uint256) {
-        if (_stakedAmountStored == 0) return rewardsPerTokenAcc;
+        if (_stakedAmountStored == 0) return rewardsPerTokenStored;
 
         uint256 duration = _duration();
 
-        if (duration == 0) return rewardsPerTokenAcc;
+        if (duration == 0) return rewardsPerTokenStored;
 
         uint256 locTotalRewards = totalRewards * _duration();
         uint256 locRemainingRewards = totalRewards * _remainingSeconds();
 
-        if (locTotalRewards < locRemainingRewards) return rewardsPerTokenAcc;
+        if (locTotalRewards < locRemainingRewards) return rewardsPerTokenStored;
 
         uint256 distributedRewards = locTotalRewards - locRemainingRewards;
         uint256 scaledStakedAmount = _stakedAmountStored * stakingTokenScale * duration;
         uint256 scaledDistributedRewards = distributedRewards * rewardsTokenScale * precision;
 
-        return rewardsPerTokenAcc + (scaledDistributedRewards / scaledStakedAmount);
+        return rewardsPerTokenStored + (scaledDistributedRewards / scaledStakedAmount);
     }
 
     /**
@@ -414,7 +411,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
      *   remaining rewards and duration as the remaining seconds.
      */
     function _checkpoint() private {
-        rewardsPerTokenAcc = _rewardsPerToken();
+        rewardsPerTokenStored = _rewardsPerToken();
 
         bool isActive = _stakedAmountStored > 0;
 
