@@ -189,28 +189,6 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     }
 
     /**
-     * Withdraw staked tokens of the sender without claming rewards, in case of emergency.
-     */
-    function emergencyWithdraw() external nonReentrant whenNotPaused {
-        StakeData storage stakeData = addressToStakeData[msg.sender];
-
-        _earnRewards(stakeData);
-
-        uint256 amount = stakeData.amount;
-        uint256 earned = stakeData.earned;
-
-        stakeData.amount = 0;
-        stakeData.earned = 0;
-
-        _stakedAmountStored -= amount;
-        _rewardAmountStored -= earned;
-
-        STAKING_TOKEN.safeTransfer(msg.sender, amount);
-
-        emit EmergencyWithdraw(msg.sender, amount);
-    }
-
-    /**
      * Adds the given rewards for the given duration.
      *
      * It *must* be used to add rewards to the pool.

@@ -6,7 +6,6 @@ import {IAccessControlDefaultAdminRules} from "openzeppelin/access/IAccessContro
 interface IERC20StakingPool is IAccessControlDefaultAdminRules {
     event Stake(address indexed addr, uint256 amount);
     event Unstake(address indexed addr, uint256 amount);
-    event EmergencyWithdraw(address indexed addr, uint256 amount);
     event AddRewards(address indexed addr, uint256 amount, uint256 duration);
     event RemoveRewards(address indexed addr, uint256 amount);
     event Claim(address indexed addr, uint256 amount);
@@ -25,7 +24,6 @@ interface IERC20StakingPool is IAccessControlDefaultAdminRules {
     function stake(uint256 amount) external;
     function unstake(uint256 amount) external;
     function claim() external;
-    function emergencyWithdraw() external;
     function addRewards(uint256 amount, uint256 duration) external;
     function removeRewards() external;
 }
