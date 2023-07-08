@@ -12,6 +12,7 @@ interface IERC20StakingPool is IAccessControlDefaultAdminRules {
     event Claim(address indexed addr, uint256 amount);
     event Sweep(address indexed addr, address token, uint256 amount);
 
+    function OPERATOR_ROLE() external view returns (bytes32);
     function stakingTokenAddress() external view returns (address);
     function rewardsTokenAddress() external view returns (address);
     function stakedAmountStored() external view returns (uint256);
