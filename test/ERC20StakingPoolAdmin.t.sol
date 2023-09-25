@@ -68,7 +68,7 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
 
         poolContract.sweep(address(stakingToken));
 
-        assertEq(poolContract.stakedAmountStored(), 1000);
+        assertEq(poolContract.totalStakedTokens(), 1000);
         assertEq(stakingToken.balanceOf(address(this)), ownerOriginalBalance + 10000);
         assertEq(stakingToken.balanceOf(address(poolContract)), contractOriginalBalance - 10000);
     }
@@ -103,7 +103,6 @@ contract ERC20StakingPoolAdminTest is ERC20StakingPoolBaseTest {
 
         poolContract.sweep(address(rewardsToken));
 
-        assertEq(poolContract.rewardAmountStored(), 500);
         assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance + 10000);
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 10000);
     }

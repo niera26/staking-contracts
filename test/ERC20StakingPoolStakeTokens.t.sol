@@ -4,38 +4,38 @@ pragma solidity ^0.8.17;
 import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
-contract ERC20StakingPoolStakeTest is ERC20StakingPoolBaseTest {
-    event Stake(address indexed addr, uint256 amount);
+contract ERC20StakingPoolStakeTokensTest is ERC20StakingPoolBaseTest {
+    event StakeTokens(address indexed addr, uint256 amount);
 
-    function testStake_increasesHolderStake() public {
+    function testStakeTokens_increasesHolderStake() public {
         address holder = vm.addr(1);
 
-        uint256 originalHolderStake = poolContract.staked(holder);
+        uint256 originalStakedTokens = poolContract.stakedTokens(holder);
 
         stake(holder, 500);
 
-        assertEq(poolContract.staked(holder), originalHolderStake + 500);
+        assertEq(poolContract.stakedTokens(holder), originalStakedTokens + 500);
 
         stake(holder, 500);
 
-        assertEq(poolContract.staked(holder), originalHolderStake + 1000);
+        assertEq(poolContract.stakedTokens(holder), originalStakedTokens + 1000);
     }
 
-    function testStake_increasesTotalStaked() public {
+    function testStakeTokens_increasesTotalStakedTokens() public {
         address holder = vm.addr(1);
 
-        uint256 originalStakedAmountStored = poolContract.stakedAmountStored();
+        uint256 originalTotalStakedTokens = poolContract.totalStakedTokens();
 
         stake(holder, 500);
 
-        assertEq(poolContract.stakedAmountStored(), originalStakedAmountStored + 500);
+        assertEq(poolContract.totalStakedTokens(), originalTotalStakedTokens + 500);
 
         stake(holder, 500);
 
-        assertEq(poolContract.stakedAmountStored(), originalStakedAmountStored + 1000);
+        assertEq(poolContract.totalStakedTokens(), originalTotalStakedTokens + 1000);
     }
 
-    function testStake_transfersTokensFromHolderToContract() public {
+    function testStakeTokens_transfersTokensFromHolderToContract() public {
         address holder = vm.addr(1);
 
         uint256 holderOriginalBalance = stakingToken.balanceOf(holder);
@@ -52,27 +52,27 @@ contract ERC20StakingPoolStakeTest is ERC20StakingPoolBaseTest {
         assertEq(stakingToken.balanceOf(address(poolContract)), contractOriginalBalance + 1000);
     }
 
-    function testStake_emitsStake() public {
+    function testStakeTokens_emitsStakeTokens() public {
         address holder = vm.addr(1);
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit Stake(holder, 1000);
+        emit StakeTokens(holder, 1000);
 
         stake(holder, 1000);
     }
 
-    function testStake_revertsZeroAmount() public {
+    function testStakeTokens_revertsZeroAmount() public {
         address holder = vm.addr(1);
 
         vm.expectRevert(ERC20StakingPool.ZeroAmount.selector);
 
         vm.prank(holder);
 
-        poolContract.stake(0);
+        poolContract.stakeTokens(0);
     }
 
-    function testStake_revertsInsufficientAllowance() public {
+    function testStakeTokens_revertsInsufficientAllowance() public {
         address holder = vm.addr(1);
 
         stakingToken.transfer(holder, 1000);
@@ -85,10 +85,10 @@ contract ERC20StakingPoolStakeTest is ERC20StakingPoolBaseTest {
 
         vm.prank(holder);
 
-        poolContract.stake(1000);
+        poolContract.stakeTokens(1000);
     }
 
-    function testStake_revertsInsufficientBalance() public {
+    function testStakeTokens_revertsInsufficientBalance() public {
         address holder = vm.addr(1);
 
         stakingToken.transfer(holder, 999);
@@ -101,10 +101,10 @@ contract ERC20StakingPoolStakeTest is ERC20StakingPoolBaseTest {
 
         vm.prank(holder);
 
-        poolContract.stake(1000);
+        poolContract.stakeTokens(1000);
     }
 
-    function testStake_revertsPaused() public {
+    function testStakeTokens_revertsPaused() public {
         address holder = vm.addr(1);
 
         stakingToken.transfer(holder, 1000);
@@ -119,12 +119,12 @@ contract ERC20StakingPoolStakeTest is ERC20StakingPoolBaseTest {
 
         vm.prank(holder);
 
-        poolContract.stake(1000);
+        poolContract.stakeTokens(1000);
 
         poolContract.unpause();
 
         vm.prank(holder);
 
-        poolContract.stake(1000);
+        poolContract.stakeTokens(1000);
     }
 }

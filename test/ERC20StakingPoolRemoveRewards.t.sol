@@ -7,20 +7,6 @@ import "./ERC20StakingPoolBase.t.sol";
 contract ERC20StakingPoolRemoveRewardsTest is ERC20StakingPoolBaseTest {
     event RemoveRewards(address indexed addr, uint256 amount);
 
-    function testRemoveRewards_decreasesTotalRewards() public {
-        stake(vm.addr(1), 1000);
-
-        addRewards(1000, 10);
-
-        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
-
-        vm.warp(block.timestamp + 5);
-
-        poolContract.removeRewards();
-
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored - 500);
-    }
-
     function testRemoveRewards_setRemainingRewardsToZero() public {
         addRewards(1000, 10);
 

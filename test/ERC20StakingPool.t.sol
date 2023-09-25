@@ -14,29 +14,29 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         stake(holder, 300);
 
-        assertEq(poolContract.stakedAmountStored(), 300);
-        assertEq(poolContract.staked(holder), 300);
+        assertEq(poolContract.totalStakedTokens(), 300);
+        assertEq(poolContract.stakedTokens(holder), 300);
         assertEq(stakingToken.balanceOf(holder), holderOriginalBalance);
         assertEq(stakingToken.balanceOf(address(poolContract)), 300);
 
         stake(holder, 700);
 
-        assertEq(poolContract.stakedAmountStored(), 1000);
-        assertEq(poolContract.staked(holder), 1000);
+        assertEq(poolContract.totalStakedTokens(), 1000);
+        assertEq(poolContract.stakedTokens(holder), 1000);
         assertEq(stakingToken.balanceOf(holder), holderOriginalBalance);
         assertEq(stakingToken.balanceOf(address(poolContract)), 1000);
 
         unstake(holder, 200);
 
-        assertEq(poolContract.stakedAmountStored(), 800);
-        assertEq(poolContract.staked(holder), 800);
+        assertEq(poolContract.totalStakedTokens(), 800);
+        assertEq(poolContract.stakedTokens(holder), 800);
         assertEq(stakingToken.balanceOf(holder), holderOriginalBalance + 200);
         assertEq(stakingToken.balanceOf(address(poolContract)), 800);
 
         unstake(holder, 800);
 
-        assertEq(poolContract.stakedAmountStored(), 0);
-        assertEq(poolContract.staked(holder), 0);
+        assertEq(poolContract.totalStakedTokens(), 0);
+        assertEq(poolContract.stakedTokens(holder), 0);
         assertEq(stakingToken.balanceOf(holder), holderOriginalBalance + 1000);
         assertEq(stakingToken.balanceOf(address(poolContract)), 0);
     }
@@ -55,7 +55,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         addRewards(1000, duration);
 
         // at first nobody has rewards.
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 1000);
         assertEq(poolContract.remainingSeconds(), duration);
         assertEq(poolContract.pendingRewards(holder1), 0);
@@ -66,7 +65,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // at half time they have half their rewards.
         vm.warp(block.timestamp + duration / 2);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), duration / 2);
         assertEq(poolContract.pendingRewards(holder1), 150);
@@ -77,7 +75,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder1 claim his rewards.
         claim(holder1);
 
-        assertEq(poolContract.rewardAmountStored(), 850);
         assertEq(poolContract.pendingRewards(holder1), 0);
         assertEq(poolContract.remainingRewards(holder1), 150);
         assertEq(rewardsToken.balanceOf(holder1), holder1OriginalBalance + 150);
@@ -85,7 +82,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // at full time they should have all their rewards.
         vm.warp(block.timestamp + duration / 2);
 
-        assertEq(poolContract.rewardAmountStored(), 850);
         assertEq(poolContract.remainingRewards(), 0);
         assertEq(poolContract.remainingSeconds(), 0);
         assertEq(poolContract.pendingRewards(holder1), 150);
@@ -96,7 +92,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder1 claim all.
         claim(holder1);
 
-        assertEq(poolContract.rewardAmountStored(), 700);
         assertEq(poolContract.pendingRewards(holder1), 0);
         assertEq(poolContract.remainingRewards(holder1), 0);
         assertEq(rewardsToken.balanceOf(holder1), holder1OriginalBalance + 300);
@@ -104,7 +99,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder2 claim all.
         claim(holder2);
 
-        assertEq(poolContract.rewardAmountStored(), 0);
         assertEq(poolContract.pendingRewards(holder2), 0);
         assertEq(poolContract.remainingRewards(holder2), 0);
         assertEq(rewardsToken.balanceOf(holder2), holder2OriginalBalance + 700);
@@ -124,7 +118,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         addRewards(1000, duration);
 
         // at first nobody has rewards.
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 1000);
         assertEq(poolContract.remainingSeconds(), duration);
         assertEq(poolContract.pendingRewards(holder1), 0);
@@ -135,7 +128,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // at half time they have half their rewards.
         vm.warp(block.timestamp + duration / 2);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), duration / 2);
         assertEq(poolContract.pendingRewards(holder1), 200);
@@ -146,7 +138,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder1 stake more.
         stake(holder1, 100);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), duration / 2);
         assertEq(poolContract.pendingRewards(holder1), 200);
@@ -157,7 +148,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // at full time they should have all their rewards.
         vm.warp(block.timestamp + duration / 2);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 0);
         assertEq(poolContract.remainingSeconds(), 0);
         assertEq(poolContract.pendingRewards(holder1) + 1, 450);
@@ -168,7 +158,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder1 claim all.
         claim(holder1);
 
-        assertEq(poolContract.rewardAmountStored(), 550 + 1); // theres dust.
         assertEq(poolContract.pendingRewards(holder1), 0);
         assertEq(poolContract.remainingRewards(holder1), 0);
         assertEq(rewardsToken.balanceOf(holder1), holder1OriginalBalance + 450 - 1);
@@ -176,7 +165,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder2 claim all.
         claim(holder2);
 
-        assertEq(poolContract.rewardAmountStored(), 0 + 2); // theres dust.
         assertEq(poolContract.pendingRewards(holder2), 0);
         assertEq(poolContract.remainingRewards(holder2), 0);
         assertEq(rewardsToken.balanceOf(holder2), holder2OriginalBalance + 550 - 1);
@@ -196,7 +184,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         addRewards(1000, duration);
 
         // at first nobody has rewards.
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 1000);
         assertEq(poolContract.remainingSeconds(), duration);
         assertEq(poolContract.pendingRewards(holder1), 0);
@@ -207,7 +194,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // at half time they have half their rewards.
         vm.warp(block.timestamp + duration / 2);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), duration / 2);
         assertEq(poolContract.pendingRewards(holder1), 200);
@@ -218,7 +204,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder2 unstake some.
         unstake(holder2, 100);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), duration / 2);
         assertEq(poolContract.pendingRewards(holder1), 200);
@@ -229,7 +214,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // at full time they should have all their rewards.
         vm.warp(block.timestamp + duration / 2);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 0);
         assertEq(poolContract.remainingSeconds(), 0);
         assertEq(poolContract.pendingRewards(holder1), 450);
@@ -240,7 +224,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder1 claim all.
         claim(holder1);
 
-        assertEq(poolContract.rewardAmountStored(), 550);
         assertEq(poolContract.pendingRewards(holder1), 0);
         assertEq(poolContract.remainingRewards(holder1), 0);
         assertEq(rewardsToken.balanceOf(holder1), holder1OriginalBalance + 450);
@@ -248,7 +231,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder2 claim all.
         claim(holder2);
 
-        assertEq(poolContract.rewardAmountStored(), 0);
         assertEq(poolContract.pendingRewards(holder2), 0);
         assertEq(poolContract.remainingRewards(holder2), 0);
         assertEq(rewardsToken.balanceOf(holder2), holder2OriginalBalance + 550);
@@ -268,7 +250,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         addRewards(1000, duration);
 
         // at first nobody has rewards.
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 1000);
         assertEq(poolContract.remainingSeconds(), duration);
         assertEq(poolContract.pendingRewards(holder1), 0);
@@ -279,7 +260,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // at half time they have half their rewards.
         vm.warp(block.timestamp + duration / 2);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), duration / 2);
         assertEq(poolContract.pendingRewards(holder1), 150);
@@ -291,7 +271,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         addRewards(1000, duration);
 
         // more remaining rewards andend of distribution increased.
-        assertEq(poolContract.rewardAmountStored(), 2000);
         assertEq(poolContract.remainingRewards(), 1500);
         assertEq(poolContract.remainingSeconds(), (duration / 2) + duration);
         assertEq(poolContract.pendingRewards(holder1), 150);
@@ -302,7 +281,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // at end of second distribution, holders have all their rewards.
         vm.warp(block.timestamp + (duration / 2) + duration);
 
-        assertEq(poolContract.rewardAmountStored(), 2000);
         assertEq(poolContract.remainingRewards(), 0);
         assertEq(poolContract.remainingSeconds(), 0);
         assertEq(poolContract.pendingRewards(holder1), 600);
@@ -313,7 +291,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder1 claim all.
         claim(holder1);
 
-        assertEq(poolContract.rewardAmountStored(), 1400);
         assertEq(poolContract.pendingRewards(holder1), 0);
         assertEq(poolContract.remainingRewards(holder1), 0);
         assertEq(rewardsToken.balanceOf(holder1), holder1OriginalBalance + 600);
@@ -321,7 +298,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder2 claim all.
         claim(holder2);
 
-        assertEq(poolContract.rewardAmountStored(), 0);
         assertEq(poolContract.pendingRewards(holder2), 0);
         assertEq(poolContract.remainingRewards(holder2), 0);
         assertEq(rewardsToken.balanceOf(holder2), holder2OriginalBalance + 1400);
@@ -334,7 +310,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         addRewards(1000, duration);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 1000);
         assertEq(poolContract.remainingSeconds(), duration);
         assertEq(poolContract.pendingRewards(holder), 0);
@@ -346,7 +321,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // add the first stake.
         stake(holder, 1000);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 1000);
         assertEq(poolContract.remainingSeconds(), duration);
         assertEq(poolContract.pendingRewards(holder), 0);
@@ -355,7 +329,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // half the time pass with a stake.
         vm.warp(block.timestamp + duration / 2);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), (duration / 2));
         assertEq(poolContract.pendingRewards(holder), 500);
@@ -364,7 +337,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // staker unstakes all.
         unstake(holder, 1000);
 
-        assertEq(poolContract.rewardAmountStored(), 500);
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), (duration / 2));
         assertEq(poolContract.pendingRewards(holder), 0);
@@ -376,7 +348,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // add the first stake again.
         stake(holder, 1000);
 
-        assertEq(poolContract.rewardAmountStored(), 500);
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), (duration / 2));
         assertEq(poolContract.pendingRewards(holder), 0);
@@ -385,7 +356,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // half the time pass with a stake.
         vm.warp(block.timestamp + duration / 2);
 
-        assertEq(poolContract.rewardAmountStored(), 500);
         assertEq(poolContract.remainingRewards(), 0);
         assertEq(poolContract.remainingSeconds(), 0);
         assertEq(poolContract.pendingRewards(holder), 500);
@@ -394,7 +364,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
         // holder claim all.
         claim(holder);
 
-        assertEq(poolContract.rewardAmountStored(), 0);
         assertEq(poolContract.pendingRewards(holder), 0);
         assertEq(poolContract.remainingRewards(holder), 0);
         assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance + 1000);
@@ -409,7 +378,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         addRewards(1000, duration);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 1000);
         assertEq(poolContract.remainingSeconds(), duration);
         assertEq(poolContract.pendingRewards(holder), 0);
@@ -417,7 +385,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         vm.warp(block.timestamp + duration / 2);
 
-        assertEq(poolContract.rewardAmountStored(), 1000);
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), (duration / 2));
         assertEq(poolContract.pendingRewards(holder), 500);
@@ -425,7 +392,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         poolContract.removeRewards();
 
-        assertEq(poolContract.rewardAmountStored(), 500);
         assertEq(poolContract.remainingRewards(), 0);
         assertEq(poolContract.remainingSeconds(), 0);
         assertEq(poolContract.pendingRewards(holder), 500);
@@ -433,7 +399,6 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         claim(holder);
 
-        assertEq(poolContract.rewardAmountStored(), 0);
         assertEq(poolContract.pendingRewards(holder), 0);
         assertEq(poolContract.remainingRewards(holder), 0);
         assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance + 500);

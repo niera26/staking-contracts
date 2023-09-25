@@ -31,7 +31,7 @@ contract ERC20StakingPoolBaseTest is Test {
         stakingToken = new ERC20Mock("staking token", "STK", 10_000_000, 18);
         rewardsToken = new ERC20Mock("rewards token", "RWD", 1_000_000_000, 6);
         randomToken = new ERC20Mock("random token", "RDTT", 1_000_000, 18);
-        poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken), 1);
+        poolContract = new ERC20StakingPool(address(stakingToken), address(rewardsToken));
 
         poolContract.grantRole(poolContract.OPERATOR_ROLE(), address(this));
     }
@@ -40,14 +40,14 @@ contract ERC20StakingPoolBaseTest is Test {
         stakingToken.transfer(holder, amount);
         vm.startPrank(holder);
         stakingToken.approve(address(poolContract), amount);
-        poolContract.stake(amount);
+        poolContract.stakeTokens(amount);
         vm.stopPrank();
     }
 
     function unstake(address holder, uint256 amount) internal {
         vm.prank(holder);
 
-        poolContract.unstake(amount);
+        poolContract.unstakeTokens(amount);
     }
 
     function addRewards(uint256 amount, uint256 duration) internal {
@@ -59,7 +59,7 @@ contract ERC20StakingPoolBaseTest is Test {
     function claim(address holder) internal {
         vm.prank(holder);
 
-        poolContract.claim();
+        poolContract.claimRewards();
     }
 
     function notAdminRoleErrorMessage(address sender) internal view returns (bytes memory) {

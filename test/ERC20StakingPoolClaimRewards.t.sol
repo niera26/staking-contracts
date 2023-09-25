@@ -4,40 +4,10 @@ pragma solidity ^0.8.17;
 import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
-contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
-    event Claim(address indexed addr, uint256 amount);
+contract ERC20StakingPoolClaimRewardsTest is ERC20StakingPoolBaseTest {
+    event ClaimRewards(address indexed addr, uint256 amount);
 
-    function testClaim_doesNotReduceTotalRewardsWhenHolderHasNoReward() public {
-        address holder = vm.addr(1);
-
-        stake(holder, 1000);
-
-        addRewards(1000, 10);
-
-        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
-
-        claim(holder);
-
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored);
-    }
-
-    function testClaim_reducesTotalRewardsWhenHolderHasRewards() public {
-        address holder = vm.addr(1);
-
-        stake(holder, 1000);
-
-        addRewards(1000, 10);
-
-        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
-
-        vm.warp(block.timestamp + 5);
-
-        claim(holder);
-
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored - 500);
-    }
-
-    function testClaim_doesNotTransferTokenFromContractToHolderWhenHolderHasNoReward() public {
+    function testClaimRewards_doesNotTransferTokenFromContractToHolderWhenHolderHasNoReward() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -53,7 +23,7 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance);
     }
 
-    function testClaim_transfersTokensFromContractToHolderWhenHolderHasRewards() public {
+    function testClaimRewards_transfersTokensFromContractToHolderWhenHolderHasRewards() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -78,7 +48,7 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 1000);
     }
 
-    function testFailClaim_emitsClaimWhenHolderHasNoReward() public {
+    function testFailClaimRewards_emitsClaimRewardsWhenHolderHasNoReward() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -89,12 +59,12 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit Claim(holder, 0);
+        emit ClaimRewards(holder, 0);
 
         claim(holder);
     }
 
-    function testClaim_emitsClaimWhenHolderHasRewards() public {
+    function testClaimRewards_emitsClaimRewardsWhenHolderHasRewards() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -105,12 +75,12 @@ contract ERC20StakingPoolClaimTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit Claim(holder, 1000);
+        emit ClaimRewards(holder, 1000);
 
         claim(holder);
     }
 
-    function testClaim_revertsPaused() public {
+    function testClaimRewards_revertsPaused() public {
         address holder = vm.addr(1);
 
         poolContract.pause();

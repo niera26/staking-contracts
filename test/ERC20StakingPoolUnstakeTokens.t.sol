@@ -5,42 +5,42 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
-    event Unstake(address indexed addr, uint256 amount);
-    event Claim(address indexed addr, uint256 amount);
+    event UnstakeTokens(address indexed addr, uint256 amount);
+    event ClaimRewards(address indexed addr, uint256 amount);
 
-    function testUnstake_decreasesHolderStake() public {
+    function testUnstakeTokens_decreasesHolderStake() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
 
-        uint256 originalHolderStake = poolContract.staked(holder);
+        uint256 originalStakedTokens = poolContract.stakedTokens(holder);
 
         unstake(holder, 500);
 
-        assertEq(poolContract.staked(holder), originalHolderStake - 500);
+        assertEq(poolContract.stakedTokens(holder), originalStakedTokens - 500);
 
         unstake(holder, 500);
 
-        assertEq(poolContract.staked(holder), originalHolderStake - 1000);
+        assertEq(poolContract.stakedTokens(holder), originalStakedTokens - 1000);
     }
 
-    function testUnstake_decreasesTotalStaked() public {
+    function testUnstakeTokens_decreasesTotalStakedTokens() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
 
-        uint256 originalStakedAmountStored = poolContract.stakedAmountStored();
+        uint256 originalTotalStakedTokens = poolContract.totalStakedTokens();
 
         unstake(holder, 500);
 
-        assertEq(poolContract.stakedAmountStored(), originalStakedAmountStored - 500);
+        assertEq(poolContract.totalStakedTokens(), originalTotalStakedTokens - 500);
 
         unstake(holder, 500);
 
-        assertEq(poolContract.stakedAmountStored(), originalStakedAmountStored - 1000);
+        assertEq(poolContract.totalStakedTokens(), originalTotalStakedTokens - 1000);
     }
 
-    function testUnstake_transfersTokensFromContractToHolder() public {
+    function testUnstakeTokens_transfersTokensFromContractToHolder() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -59,62 +59,16 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
         assertEq(stakingToken.balanceOf(address(poolContract)), contractOriginalBalance - 1000);
     }
 
-    function testUnstake_emitsUnstake() public {
+    function testUnstakeTokens_emitsUnstakeTokens() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit Unstake(holder, 1000);
+        emit UnstakeTokens(holder, 1000);
 
         unstake(holder, 1000);
-    }
-
-    function testUnstakeSome_doesNotReduceTotalRewards() public {
-        address holder = vm.addr(1);
-
-        stake(holder, 1000);
-
-        addRewards(1000, 10);
-
-        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
-
-        vm.warp(block.timestamp + 5);
-
-        unstake(holder, 500);
-
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored);
-    }
-
-    function testUnstakeAll_doesNotReduceTotalRewardsWhenHolderHasNoReward() public {
-        address holder = vm.addr(1);
-
-        stake(holder, 1000);
-
-        addRewards(1000, 10);
-
-        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
-
-        unstake(holder, 1000);
-
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored);
-    }
-
-    function testUnstakeAll_reducesTotalRewardsWhenHolderHasRewards() public {
-        address holder = vm.addr(1);
-
-        stake(holder, 1000);
-
-        addRewards(1000, 10);
-
-        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
-
-        vm.warp(block.timestamp + 5);
-
-        unstake(holder, 1000);
-
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored - 500);
     }
 
     function testUnstakeSome_doesNotTransferTokenFromContractToHolder() public {
@@ -169,7 +123,7 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 500);
     }
 
-    function testFailUnstakeSome_emitsClaim() public {
+    function testFailUnstakeSome_emitsClaimRewards() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -180,12 +134,12 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit Claim(holder, 0);
+        emit ClaimRewards(holder, 0);
 
         unstake(holder, 500);
     }
 
-    function testFailUnstakeAll_emitsClaimWhenHolderHasNoReward() public {
+    function testFailUnstakeAll_emitsClaimRewardsWhenHolderHasNoReward() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -196,12 +150,12 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit Claim(holder, 0);
+        emit ClaimRewards(holder, 0);
 
         unstake(holder, 1000);
     }
 
-    function testUnstakeAll_emitsClaimWhenHolderHasRewards() public {
+    function testUnstakeAll_emitsClaimRewardsWhenHolderHasRewards() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -212,22 +166,22 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.expectEmit(true, true, true, true, address(poolContract));
 
-        emit Claim(holder, 1000);
+        emit ClaimRewards(holder, 1000);
 
         unstake(holder, 1000);
     }
 
-    function testUnstake_revertsZeroAmount() public {
+    function testUnstakeTokens_revertsZeroAmount() public {
         address holder = vm.addr(1);
 
         vm.expectRevert(ERC20StakingPool.ZeroAmount.selector);
 
         vm.prank(holder);
 
-        poolContract.unstake(0);
+        poolContract.unstakeTokens(0);
     }
 
-    function testUnstake_revertsInsufficientStakedAmount() public {
+    function testUnstakeTokens_revertsInsufficientStakedAmount() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -236,10 +190,10 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.prank(holder);
 
-        poolContract.unstake(1001);
+        poolContract.unstakeTokens(1001);
     }
 
-    function testUnstake_revertsPaused() public {
+    function testUnstakeTokens_revertsPaused() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -250,12 +204,12 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
 
         vm.prank(holder);
 
-        poolContract.unstake(1000);
+        poolContract.unstakeTokens(1000);
 
         poolContract.unpause();
 
         vm.prank(holder);
 
-        poolContract.unstake(1000);
+        poolContract.unstakeTokens(1000);
     }
 }

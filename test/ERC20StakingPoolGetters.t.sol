@@ -5,33 +5,23 @@ import "forge-std/Test.sol";
 import "./ERC20StakingPoolBase.t.sol";
 
 contract ERC20StakingPoolGettersTest is ERC20StakingPoolBaseTest {
-    function testStakingTokenAddress() public {
-        assertEq(poolContract.stakingTokenAddress(), address(stakingToken));
+    function testStakingToken() public {
+        assertEq(address(poolContract.stakingToken()), address(stakingToken));
     }
 
     function testRewardsTokenAddress() public {
-        assertEq(poolContract.rewardsTokenAddress(), address(rewardsToken));
+        assertEq(address(poolContract.rewardsToken()), address(rewardsToken));
     }
 
-    function testStakedAmountStored() public {
+    function testTotalStakedAmount() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
 
-        assertEq(poolContract.stakedAmountStored(), 1000);
+        assertEq(poolContract.totalStakedTokens(), 1000);
 
         stake(holder, 1000);
 
-        assertEq(poolContract.stakedAmountStored(), 2000);
-    }
-
-    function testRewardAmountStored() public {
-        addRewards(1000, 10 days);
-
-        assertEq(poolContract.rewardAmountStored(), 1000);
-
-        addRewards(1000, 10 days);
-
-        assertEq(poolContract.rewardAmountStored(), 2000);
+        assertEq(poolContract.totalStakedTokens(), 2000);
     }
 }

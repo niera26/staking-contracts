@@ -13,30 +13,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         rewardsToken.transfer(recipient, rewardsToken.totalSupply() - amount);
     }
 
-    function testAddRewards_allowsToAddExactOwnerBalance() public {
-        setOwnerBalanceTo(1000);
-
-        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
-
-        addRewards(1000, 10);
-
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 1000);
-    }
-
-    function testAddRewards_increasesTotalRewards() public {
-        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
-
-        addRewards(500, 10);
-
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 500);
-
-        addRewards(500, 10);
-
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 1000);
-    }
-
     function testAddRewards_increasesRemainingRewards() public {
-        uint256 originalRemainingRewards = poolContract.rewardAmountStored();
+        uint256 originalRemainingRewards = poolContract.remainingRewards();
 
         addRewards(500, 10);
 
@@ -85,7 +63,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
 
         poolContract.grantRole(poolContract.OPERATOR_ROLE(), sender);
 
-        uint256 originalRewardAmountStored = poolContract.rewardAmountStored();
+        uint256 originalRemainingrewards = poolContract.remainingRewards();
 
         rewardsToken.transfer(sender, 500);
 
@@ -94,7 +72,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         addRewards(500, 10);
         vm.stopPrank();
 
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 500);
+        assertEq(poolContract.remainingRewards(), originalRemainingrewards + 500);
 
         rewardsToken.transfer(sender, 500);
 
@@ -103,7 +81,7 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         addRewards(500, 10);
         vm.stopPrank();
 
-        assertEq(poolContract.rewardAmountStored(), originalRewardAmountStored + 1000);
+        assertEq(poolContract.remainingRewards(), originalRemainingrewards + 1000);
     }
 
     function testAddRewards_revertsCallerIsNotOperatorRole() public {
