@@ -150,8 +150,8 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         assertEq(poolContract.remainingRewards(), 0);
         assertEq(poolContract.remainingSeconds(), 0);
-        assertEq(poolContract.pendingRewards(holder1) + 1, 450);
-        assertEq(poolContract.pendingRewards(holder2) + 1, 550);
+        assertEq(poolContract.pendingRewards(holder1), 449);
+        assertEq(poolContract.pendingRewards(holder2), 549);
         assertEq(poolContract.remainingRewards(holder1), 0);
         assertEq(poolContract.remainingRewards(holder2), 0);
 
@@ -160,14 +160,14 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         assertEq(poolContract.pendingRewards(holder1), 0);
         assertEq(poolContract.remainingRewards(holder1), 0);
-        assertEq(rewardsToken.balanceOf(holder1), holder1OriginalBalance + 450 - 1);
+        assertEq(rewardsToken.balanceOf(holder1), holder1OriginalBalance + 449);
 
         // holder2 claim all.
         claim(holder2);
 
         assertEq(poolContract.pendingRewards(holder2), 0);
         assertEq(poolContract.remainingRewards(holder2), 0);
-        assertEq(rewardsToken.balanceOf(holder2), holder2OriginalBalance + 550 - 1);
+        assertEq(rewardsToken.balanceOf(holder2), holder2OriginalBalance + 549);
     }
 
     function testUnstakingUpdatesDistribution() public {
@@ -339,7 +339,7 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), (duration / 2));
-        assertEq(poolContract.pendingRewards(holder), 0);
+        assertEq(poolContract.pendingRewards(holder), 500);
         assertEq(poolContract.remainingRewards(holder), 0);
 
         // half the time pass with no stake.
@@ -350,7 +350,7 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         assertEq(poolContract.remainingRewards(), 500);
         assertEq(poolContract.remainingSeconds(), (duration / 2));
-        assertEq(poolContract.pendingRewards(holder), 0);
+        assertEq(poolContract.pendingRewards(holder), 500);
         assertEq(poolContract.remainingRewards(holder), 500);
 
         // half the time pass with a stake.
@@ -358,7 +358,7 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         assertEq(poolContract.remainingRewards(), 0);
         assertEq(poolContract.remainingSeconds(), 0);
-        assertEq(poolContract.pendingRewards(holder), 500);
+        assertEq(poolContract.pendingRewards(holder), 1000);
         assertEq(poolContract.remainingRewards(holder), 0);
 
         // holder claim all.
