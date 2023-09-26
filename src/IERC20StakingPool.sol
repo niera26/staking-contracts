@@ -10,8 +10,8 @@ interface IERC20StakingPool is IAccessControlDefaultAdminRules {
     event ClaimRewards(address indexed addr, uint256 amount);
     event AddRewards(address indexed addr, uint256 amount, uint256 duration);
     event RemoveRewards(address indexed addr, uint256 amount);
-    event SetDuration(address indexed addr, uint256 duration);
-    event SetUntil(address indexed addr, uint256 timestamp);
+    event SetDurationTo(address indexed addr, uint256 duration);
+    event SetDurationUntil(address indexed addr, uint256 timestamp);
     event Sweep(address indexed addr, address token, uint256 amount);
 
     function OPERATOR_ROLE() external view returns (bytes32);
@@ -28,4 +28,6 @@ interface IERC20StakingPool is IAccessControlDefaultAdminRules {
     function claimRewards() external;
     function addRewards(uint256 amount, uint256 duration) external;
     function removeRewards() external;
+    function setDurationTo(uint256 duration) external;
+    function setDurationUntil(uint256 timestamp) external;
 }

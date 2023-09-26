@@ -209,27 +209,27 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     /**
      * Set the distribution remaining seconds to the given duration.
      */
-    function setDuration(uint256 duration) external onlyRole(OPERATOR_ROLE) {
+    function setDurationTo(uint256 duration) external onlyRole(OPERATOR_ROLE) {
         if (duration == 0) revert ZeroDuration();
 
         last.remainingSeconds = duration;
 
         _overflowChecks();
 
-        emit SetDuration(msg.sender, duration);
+        emit SetDurationTo(msg.sender, duration);
     }
 
     /**
      * Set the distribution remaining seconds so it ends at the given timestamp.
      */
-    function setUntil(uint256 timestamp) external onlyRole(OPERATOR_ROLE) {
+    function setDurationUntil(uint256 timestamp) external onlyRole(OPERATOR_ROLE) {
         if (block.timestamp > timestamp) revert InvalidTimestamp(timestamp);
 
         last.remainingSeconds = timestamp - block.timestamp;
 
         _overflowChecks();
 
-        emit SetUntil(msg.sender, timestamp);
+        emit SetDurationUntil(msg.sender, timestamp);
     }
 
     /**
