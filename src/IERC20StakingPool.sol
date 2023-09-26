@@ -11,7 +11,7 @@ interface IERC20StakingPool is IAccessControlDefaultAdminRules {
     event AddRewards(address indexed addr, uint256 amount, uint256 duration);
     event RemoveRewards(address indexed addr, uint256 amount);
     event SetDurationTo(address indexed addr, uint256 duration);
-    event SetDurationUntil(address indexed addr, uint256 timestamp);
+    event SetDurationUntil(address indexed addr, uint256 timestamp, uint256 duration);
     event Sweep(address indexed addr, address token, uint256 amount);
 
     function OPERATOR_ROLE() external view returns (bytes32);

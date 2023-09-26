@@ -27,7 +27,7 @@ contract ERC20StakingPoolRemoveRewardsTest is ERC20StakingPoolBaseTest {
         assertEq(poolContract.remainingSeconds(), 0);
     }
 
-    function testRemoveRewards_transfersRewardsFromContractToOwner() public {
+    function testRemoveRewards_transfersUndistributedRewardsFromContractToOwner() public {
         stake(vm.addr(1), 1000);
 
         addRewards(1000, 10);
@@ -41,6 +41,24 @@ contract ERC20StakingPoolRemoveRewardsTest is ERC20StakingPoolBaseTest {
 
         assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance + 1000);
         assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 1000);
+    }
+
+    function testRemoveRewards_doesNottransferDistributedRewardsFromContractToOwner() public {
+        stake(vm.addr(1), 1000);
+
+        addRewards(1000, 10);
+
+        uint256 ownerOriginalBalance = rewardsToken.balanceOf(address(this));
+        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
+
+        vm.warp(block.timestamp + 5);
+
+        stake(vm.addr(1), 1000); // triggers a distribution.
+
+        poolContract.removeRewards();
+
+        assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance + 500);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 500);
     }
 
     function testRemoveRewards_emitsRemoveRewards() public {
