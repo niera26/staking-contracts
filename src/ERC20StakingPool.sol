@@ -59,6 +59,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     error InvalidTimestamp(uint256 timestamp);
     error InsufficientStakedAmount(uint256 staked, uint256 amount);
     error TokenHasMoreThan18Decimals(address token, uint8 decimals);
+    error WillOverflow();
 
     /**
      * - deployer gets granted admin role.
@@ -184,6 +185,8 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
         last.remainingRewards += amount;
         last.remainingSeconds += duration;
 
+        _overflowChecks();
+
         _transferRewardsIn(msg.sender, amount);
         emit AddRewards(msg.sender, amount, duration);
     }
@@ -211,6 +214,8 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
 
         last.remainingSeconds = duration;
 
+        _overflowChecks();
+
         emit SetDuration(msg.sender, duration);
     }
 
@@ -221,6 +226,8 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
         if (block.timestamp > timestamp) revert InvalidTimestamp(timestamp);
 
         last.remainingSeconds = timestamp - block.timestamp;
+
+        _overflowChecks();
 
         emit SetUntil(msg.sender, timestamp);
     }
@@ -397,5 +404,36 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
             rewardsPerStaked: last.rewardsPerStaked + rewardsPerStaked,
             timestamp: block.timestamp
         });
+    }
+
+    /**
+     * Ensure computations in _currentDistribution() will not revert.
+     */
+    function _overflowChecks() private view {
+        // check rewards to distribute multiplication in worst case scenario.
+        if (!tryMul(last.remainingRewards, last.remainingSeconds)) {
+            revert WillOverflow();
+        }
+
+        // check rewards per staked tokens in worst case scenario.
+        if (!tryMul(last.remainingRewards, rewardsTokenScale)) {
+            revert WillOverflow();
+        }
+
+        if (!tryMul(last.remainingRewards * rewardsTokenScale, precision)) {
+            revert WillOverflow();
+        }
+    }
+
+    /**
+     * Imported from openzeppelin.
+     */
+    function tryMul(uint256 a, uint256 b) internal pure returns (bool) {
+        unchecked {
+            if (a == 0) return true;
+            uint256 c = a * b;
+            if (c / a != b) return false;
+            return true;
+        }
     }
 }
