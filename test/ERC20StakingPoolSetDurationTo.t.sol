@@ -23,7 +23,7 @@ contract ERC20StakingPoolSetDurationToTest is ERC20StakingPoolBaseTest {
         assertEq(poolContract.remainingSeconds(), 100);
     }
 
-    function testSetDurationTo_emitsSetDurationTo() public {
+    function testSetDurationTo_emitsEvent() public {
         vm.expectEmit(true, true, true, true, address(poolContract));
 
         emit SetDurationTo(address(this), 100);

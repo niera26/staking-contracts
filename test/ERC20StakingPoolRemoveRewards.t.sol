@@ -28,40 +28,41 @@ contract ERC20StakingPoolRemoveRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testRemoveRewards_transfersUndistributedRewardsFromContractToOwner() public {
+        uint256 ownerOriginalBalance = rewardsToken.balanceOf(address(this));
+
         stake(vm.addr(1), 1000);
 
         addRewards(1000, 10);
 
-        uint256 ownerOriginalBalance = rewardsToken.balanceOf(address(this));
-        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
-
         vm.warp(block.timestamp + 5);
+
+        // no distribution occurrence.
 
         poolContract.removeRewards();
 
-        assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance + 1000);
-        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 1000);
+        assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), 0);
     }
 
-    function testRemoveRewards_doesNottransferDistributedRewardsFromContractToOwner() public {
+    function testRemoveRewards_doesNotTransferDistributedRewardsFromContractToOwner() public {
+        uint256 ownerOriginalBalance = rewardsToken.balanceOf(address(this));
+
         stake(vm.addr(1), 1000);
 
         addRewards(1000, 10);
 
-        uint256 ownerOriginalBalance = rewardsToken.balanceOf(address(this));
-        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
-
         vm.warp(block.timestamp + 5);
 
-        stake(vm.addr(1), 1000); // triggers a distribution.
+        // distribution occurrence.
+        stake(vm.addr(1), 1000);
 
         poolContract.removeRewards();
 
-        assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance + 500);
-        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 500);
+        assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance - 500);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), 500);
     }
 
-    function testRemoveRewards_emitsRemoveRewards() public {
+    function testRemoveRewards_emitsEvent() public {
         stake(vm.addr(1), 1000);
 
         addRewards(1000, 10);

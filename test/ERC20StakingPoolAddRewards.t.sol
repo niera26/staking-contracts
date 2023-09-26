@@ -14,51 +14,44 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
     }
 
     function testAddRewards_increasesRemainingRewards() public {
-        uint256 originalRemainingRewards = poolContract.remainingRewards();
-        uint256 originalRemainingSeconds = poolContract.remainingSeconds();
-
         addRewards(500, 0);
 
-        assertEq(poolContract.remainingRewards(), originalRemainingRewards + 500);
-        assertEq(poolContract.remainingSeconds(), originalRemainingSeconds);
+        assertEq(poolContract.remainingRewards(), 500);
+        assertEq(poolContract.remainingSeconds(), 0);
 
         addRewards(1000, 0);
 
-        assertEq(poolContract.remainingRewards(), originalRemainingRewards + 1500);
-        assertEq(poolContract.remainingSeconds(), originalRemainingSeconds);
+        assertEq(poolContract.remainingRewards(), 1500);
+        assertEq(poolContract.remainingSeconds(), 0);
     }
 
     function testAddRewards_allowsToincreaseRemainingSeconds() public {
-        uint256 originalRemainingRewards = poolContract.remainingRewards();
-        uint256 originalRemainingSeconds = poolContract.remainingSeconds();
-
         addRewards(500, 10);
 
-        assertEq(poolContract.remainingRewards(), originalRemainingRewards + 500);
-        assertEq(poolContract.remainingSeconds(), originalRemainingSeconds + 10);
+        assertEq(poolContract.remainingRewards(), 500);
+        assertEq(poolContract.remainingSeconds(), 10);
 
         addRewards(1000, 20);
 
-        assertEq(poolContract.remainingRewards(), originalRemainingRewards + 1500);
-        assertEq(poolContract.remainingSeconds(), originalRemainingSeconds + 30);
+        assertEq(poolContract.remainingRewards(), 1500);
+        assertEq(poolContract.remainingSeconds(), 30);
     }
 
     function testAddRewards_transfersRewardsFromOwnerToContract() public {
         uint256 ownerOriginalBalance = rewardsToken.balanceOf(address(this));
-        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
 
         addRewards(500, 0);
 
         assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance - 500);
-        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance + 500);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), 500);
 
         addRewards(1000, 0);
 
         assertEq(rewardsToken.balanceOf(address(this)), ownerOriginalBalance - 1500);
-        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance + 1500);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), 1500);
     }
 
-    function testAddRewards_emitsAddRewards() public {
+    function testAddRewards_emitsEvent() public {
         vm.expectEmit(true, true, true, true, address(poolContract));
 
         emit AddRewards(address(this), 1000, 10);
@@ -71,9 +64,6 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
 
         poolContract.grantRole(poolContract.OPERATOR_ROLE(), sender);
 
-        uint256 originalRemainingRewards = poolContract.remainingRewards();
-        uint256 originalRemainingSeconds = poolContract.remainingSeconds();
-
         rewardsToken.transfer(sender, 500);
 
         vm.startPrank(sender);
@@ -81,8 +71,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         addRewards(500, 10);
         vm.stopPrank();
 
-        assertEq(poolContract.remainingRewards(), originalRemainingRewards + 500);
-        assertEq(poolContract.remainingSeconds(), originalRemainingSeconds + 10);
+        assertEq(poolContract.remainingRewards(), 500);
+        assertEq(poolContract.remainingSeconds(), 10);
 
         rewardsToken.transfer(sender, 1000);
 
@@ -91,8 +81,8 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         addRewards(1000, 20);
         vm.stopPrank();
 
-        assertEq(poolContract.remainingRewards(), originalRemainingRewards + 1500);
-        assertEq(poolContract.remainingSeconds(), originalRemainingSeconds + 30);
+        assertEq(poolContract.remainingRewards(), 1500);
+        assertEq(poolContract.remainingSeconds(), 30);
     }
 
     function testAddRewards_allowsDurationUntilOwerflow() public {

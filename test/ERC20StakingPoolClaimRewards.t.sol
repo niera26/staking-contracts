@@ -14,13 +14,10 @@ contract ERC20StakingPoolClaimRewardsTest is ERC20StakingPoolBaseTest {
 
         addRewards(1000, 10);
 
-        uint256 holderOriginalBalance = rewardsToken.balanceOf(holder);
-        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
-
         claim(holder);
 
-        assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance);
-        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance);
+        assertEq(rewardsToken.balanceOf(holder), 0);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), 1000);
     }
 
     function testClaimRewards_transfersTokensFromContractToHolderWhenHolderHasRewards() public {
@@ -30,25 +27,22 @@ contract ERC20StakingPoolClaimRewardsTest is ERC20StakingPoolBaseTest {
 
         addRewards(1000, 10);
 
-        uint256 holderOriginalBalance = rewardsToken.balanceOf(holder);
-        uint256 contractOriginalBalance = rewardsToken.balanceOf(address(poolContract));
+        vm.warp(block.timestamp + 5);
+
+        claim(holder);
+
+        assertEq(rewardsToken.balanceOf(holder), 500);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), 500);
 
         vm.warp(block.timestamp + 5);
 
         claim(holder);
 
-        assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance + 500);
-        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 500);
-
-        vm.warp(block.timestamp + 5);
-
-        claim(holder);
-
-        assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance + 1000);
-        assertEq(rewardsToken.balanceOf(address(poolContract)), contractOriginalBalance - 1000);
+        assertEq(rewardsToken.balanceOf(holder), 1000);
+        assertEq(rewardsToken.balanceOf(address(poolContract)), 0);
     }
 
-    function testFailClaimRewards_emitsClaimRewardsWhenHolderHasNoReward() public {
+    function testFailClaimRewards_emitsEventWhenHolderHasNoReward() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
@@ -64,7 +58,7 @@ contract ERC20StakingPoolClaimRewardsTest is ERC20StakingPoolBaseTest {
         claim(holder);
     }
 
-    function testClaimRewards_emitsClaimRewardsWhenHolderHasRewards() public {
+    function testClaimRewards_emitsEventWhenHolderHasRewards() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);

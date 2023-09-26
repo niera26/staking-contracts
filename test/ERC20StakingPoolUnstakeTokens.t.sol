@@ -11,55 +11,48 @@ contract ERC20StakingPoolUnstakeTest is ERC20StakingPoolBaseTest {
     function testUnstakeTokens_decreasesHolderStake() public {
         address holder = vm.addr(1);
 
-        stake(holder, 1000);
-
-        uint256 originalStakedTokens = poolContract.stakedTokens(holder);
+        stake(holder, 1500);
 
         unstake(holder, 500);
 
-        assertEq(poolContract.stakedTokens(holder), originalStakedTokens - 500);
+        assertEq(poolContract.stakedTokens(holder), 1000);
 
-        unstake(holder, 500);
+        unstake(holder, 1000);
 
-        assertEq(poolContract.stakedTokens(holder), originalStakedTokens - 1000);
+        assertEq(poolContract.stakedTokens(holder), 0);
     }
 
     function testUnstakeTokens_decreasesTotalStakedTokens() public {
         address holder = vm.addr(1);
 
-        stake(holder, 1000);
-
-        uint256 originalTotalStakedTokens = poolContract.totalStakedTokens();
+        stake(holder, 1500);
 
         unstake(holder, 500);
 
-        assertEq(poolContract.totalStakedTokens(), originalTotalStakedTokens - 500);
+        assertEq(poolContract.totalStakedTokens(), 1000);
 
-        unstake(holder, 500);
+        unstake(holder, 1000);
 
-        assertEq(poolContract.totalStakedTokens(), originalTotalStakedTokens - 1000);
+        assertEq(poolContract.totalStakedTokens(), 0);
     }
 
     function testUnstakeTokens_transfersTokensFromContractToHolder() public {
         address holder = vm.addr(1);
 
-        stake(holder, 1000);
-
-        uint256 holderOriginalBalance = stakingToken.balanceOf(holder);
-        uint256 contractOriginalBalance = stakingToken.balanceOf(address(poolContract));
+        stake(holder, 1500);
 
         unstake(holder, 500);
 
-        assertEq(stakingToken.balanceOf(holder), holderOriginalBalance + 500);
-        assertEq(stakingToken.balanceOf(address(poolContract)), contractOriginalBalance - 500);
+        assertEq(stakingToken.balanceOf(holder), 500);
+        assertEq(stakingToken.balanceOf(address(poolContract)), 1000);
 
-        unstake(holder, 500);
+        unstake(holder, 1000);
 
-        assertEq(stakingToken.balanceOf(holder), holderOriginalBalance + 1000);
-        assertEq(stakingToken.balanceOf(address(poolContract)), contractOriginalBalance - 1000);
+        assertEq(stakingToken.balanceOf(holder), 1500);
+        assertEq(stakingToken.balanceOf(address(poolContract)), 0);
     }
 
-    function testUnstakeTokens_emitsUnstakeTokens() public {
+    function testUnstakeTokens_emitsEvent() public {
         address holder = vm.addr(1);
 
         stake(holder, 1000);
