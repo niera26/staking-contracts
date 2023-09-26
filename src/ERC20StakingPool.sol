@@ -56,6 +56,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     // errors.
     error ZeroAmount();
     error ZeroDuration();
+    error InvalidTimestamp(uint256 timestamp);
     error InsufficientStakedAmount(uint256 staked, uint256 amount);
     error TokenHasMoreThan18Decimals(address token, uint8 decimals);
 
@@ -211,6 +212,17 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
         last.remainingSeconds = duration;
 
         emit SetDuration(msg.sender, duration);
+    }
+
+    /**
+     * Set the distribution remaining seconds so it ends at the given timestamp.
+     */
+    function setUntil(uint256 timestamp) external onlyRole(OPERATOR_ROLE) {
+        if (block.timestamp > timestamp) revert InvalidTimestamp(timestamp);
+
+        last.remainingSeconds = timestamp - block.timestamp;
+
+        emit SetUntil(msg.sender, timestamp);
     }
 
     /**
