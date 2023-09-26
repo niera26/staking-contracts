@@ -102,14 +102,6 @@ contract ERC20StakingPoolAddRewardsTest is ERC20StakingPoolBaseTest {
         poolContract.addRewards(0, 10);
     }
 
-    function testAddRewards_revertsZeroDuration() public {
-        rewardsToken.approve(address(poolContract), 1000);
-
-        vm.expectRevert(ERC20StakingPool.ZeroDuration.selector);
-
-        poolContract.addRewards(1000, 0);
-    }
-
     function testAddRewards_revertsInsufficientAllowance() public {
         rewardsToken.approve(address(poolContract), 999);
 

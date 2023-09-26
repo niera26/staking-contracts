@@ -179,7 +179,6 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
      */
     function addRewards(uint256 amount, uint256 duration) external onlyRole(OPERATOR_ROLE) {
         if (amount == 0) revert ZeroAmount();
-        if (duration == 0) revert ZeroDuration();
 
         last.remainingRewards += amount;
         last.remainingSeconds += duration;
@@ -201,6 +200,17 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
             _transferRewardsOut(msg.sender, amount);
             emit RemoveRewards(msg.sender, amount);
         }
+    }
+
+    /**
+     * Set the distribution remaining seconds to the given duration.
+     */
+    function setDuration(uint256 duration) external onlyRole(OPERATOR_ROLE) {
+        if (duration == 0) revert ZeroDuration();
+
+        last.remainingSeconds = duration;
+
+        emit SetDuration(msg.sender, duration);
     }
 
     /**
