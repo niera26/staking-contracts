@@ -122,7 +122,9 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
      * Pending rewards of the given address.
      */
     function pendingRewards(address addr) external view returns (uint256) {
-        return _earned(stakeholders[addr], _currentDistribution().rewardsPerStaked);
+        Stake memory stake = stakeholders[addr];
+
+        return stake.earned + _earned(stake, _currentDistribution().rewardsPerStaked);
     }
 
     /**
@@ -338,16 +340,13 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     }
 
     /**
-     * How much the given stake earned according to the given rewardsPerToken.
+     * How much the given stake earned since the last time it earned.
      */
     function _earned(Stake memory stake, uint256 rewardsPerStaked) private view returns (uint256) {
         uint256 rewardsPerStakedDiff =
             rewardsPerStaked > stake.rewardsPerStaked ? rewardsPerStaked - stake.rewardsPerStaked : 0;
 
-        uint256 numerator = stake.amount * stakingTokenScale * rewardsPerStakedDiff;
-        uint256 denominator = rewardsTokenScale * precision;
-
-        return stake.earned + (numerator / denominator);
+        return (stake.amount * stakingTokenScale * rewardsPerStakedDiff) / (rewardsTokenScale * precision);
     }
 
     /**
@@ -363,7 +362,15 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     function _distributeAndEarnRewards(Stake storage stake) private {
         _distributeRewards();
 
-        stake.earned = _earned(stake, last.rewardsPerStaked);
-        stake.rewardsPerStaked = last.rewardsPerStaked;
+        uint256 earned = _earned(stake, last.rewardsPerStaked);
+
+        // if rewards per staked diff is very small then the division in _earned()
+        // may round to zero, so we update the stake's rewards per staked only when
+        // something was earned. This way the stake will accumulate very small rewards
+        // until it does not get rounded to zero anymore.
+        if (earned > 0) {
+            stake.earned += earned;
+            stake.rewardsPerStaked = last.rewardsPerStaked;
+        }
     }
 }
