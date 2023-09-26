@@ -18,6 +18,11 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     IERC20Metadata public immutable stakingToken;
     IERC20Metadata public immutable rewardsToken;
 
+    // amount tokens staked in the pool (!= contract balance).
+    // allows to sweep accidental transfer to the contract.
+    // stacked amount is used for the rewards per staked tokens computation.
+    uint256 public totalStakedTokens;
+
     // constant used to prevent rounding rewards per staked token to zero.
     uint256 private constant precision = 1e18;
 
@@ -28,17 +33,9 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     uint256 private immutable stakingTokenScale;
     uint256 private immutable rewardsTokenScale;
 
-    // amount tokens staked in the pool (!= contract balance).
-    // allows to sweep accidental transfer to the contract.
-    // stacked amount is used for the rewards per staked tokens computation.
-    uint256 public totalStakedTokens;
-
     // amount of rewards stored in the pool (total distributed rewards - total claimed rewards).
     // allows to sweep accidental transfer to the contract.
     uint256 private storedRewards;
-
-    // last time distribution was updated.
-    uint256 public updatedAt;
 
     // the last distribution values.
     Distribution private last;
@@ -56,6 +53,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
         uint256 remainingRewards; // rewards to be distributed during remainingSeconds.
         uint256 remainingSeconds; // number of seconds remaining until end of rewards distribution.
         uint256 rewardsPerStaked; // ever growing accumulated number of rewards per staked token.
+        uint256 timestamp; // time when the distribution occurred.
     }
 
     // errors.
@@ -262,44 +260,80 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     }
 
     /**
-     * Values of the pool based on current timestamp.
+     * how many seconds elapsed since the given distribution.
      */
-    function _currentDistribution() private view returns (Distribution memory) {
-        if (block.timestamp < updatedAt) {
+    function _elapsedSeconds(Distribution memory distribution) private view returns (uint256) {
+        if (block.timestamp < distribution.timestamp) {
             revert("invalid timestamp");
         }
 
-        // nothing has been distributed yet.
-        if (updatedAt == 0) {
-            return Distribution(0, 0, 0);
+        uint256 elapsedSeconds = block.timestamp - distribution.timestamp;
+
+        if (elapsedSeconds > distribution.remainingSeconds) {
+            elapsedSeconds = distribution.remainingSeconds;
         }
 
-        // distribute nothing when no tokens are staked or when distribution ended.
-        if (totalStakedTokens == 0 || last.remainingSeconds == 0) {
-            return Distribution(last.remainingRewards, last.remainingSeconds, last.rewardsPerStaked);
+        return elapsedSeconds;
+    }
+
+    /**
+     * new values of the distribution based on the current timestamp.
+     */
+    function _currentDistribution() private view returns (Distribution memory) {
+        // theres no staked tokens, rewards cant be distributed.
+        // distribution is "paused", keep the same values and update the timestamp.
+        if (totalStakedTokens == 0) {
+            return Distribution(last.remainingRewards, last.remainingSeconds, last.rewardsPerStaked, block.timestamp);
         }
 
-        // compute elapsed seconds since last update.
-        uint256 elapsedSeconds = block.timestamp - updatedAt;
-
-        if (elapsedSeconds > last.remainingSeconds) {
-            elapsedSeconds = last.remainingSeconds;
+        // theres no rewards left to distribute.
+        // set remaining seconds to 0 just in case of.
+        if (last.remainingRewards == 0) {
+            return Distribution(0, 0, last.rewardsPerStaked, block.timestamp);
         }
+
+        // distribution ended already.
+        // keep the remaining rewards just in case of.
+        if (last.remainingSeconds == 0) {
+            return Distribution(last.remainingRewards, 0, last.rewardsPerStaked, block.timestamp);
+        }
+
+        // this is the first distribution, nothing to distribute.
+        // set the current timestamp in case of addRewards triggers the first distribution.
+        if (last.timestamp == 0) {
+            return Distribution(0, 0, 0, block.timestamp);
+        }
+
+        // compute elapsed seconds since last distribution.
+        uint256 elapsedSeconds = _elapsedSeconds(last);
+
+        // 0 elapsed seconds will lead to 0 rewards to distribute.
+        // it means block.timestamp == last.timestamp so the same timestamp can be returned.
+        if (elapsedSeconds == 0) return last;
 
         // compute how much has been distributed since last update.
-        // should not round to zero as remainingSeconds is bounded by maxSeconds.
-        uint256 distributedRewards = (last.remainingRewards * elapsedSeconds * maxSeconds) / last.remainingSeconds;
+        // remaining rewards iand elapsed seconds are both greater than zero so this division
+        // rounds to 0 only when elapsed seconds is too small vs remaining seconds.
+        uint256 rewardsToDistribute = (last.remainingRewards * elapsedSeconds) / last.remainingSeconds;
 
-        // how much rewards has been distributed per staking token.
+        // return the same distribution when theres no rewards to distribute.
+        // it means not enough seconds elapsed for the division to not round to zero.
+        // by keepging the same timestamp then next time elpased seconds will get closer to
+        // remaining seconds, then rewards to distribute will get closer to remaining rewards.
+        // all remaining rewards are distributed when elapsed seconds == remaining seconds.
+        if (rewardsToDistribute == 0) return last;
+
+        // how much rewards to distribute per staking token.
         // should not round to zero as long as totalStakedTokens <= precision.
         uint256 rewardsPerStaked =
-            (distributedRewards * rewardsTokenScale * precision) / (totalStakedTokens * stakingTokenScale);
+            (rewardsToDistribute * rewardsTokenScale * precision) / (totalStakedTokens * stakingTokenScale);
 
         // return the new distribution.
         return Distribution({
-            remainingRewards: ((last.remainingRewards * maxSeconds) - distributedRewards) / maxSeconds,
+            remainingRewards: last.remainingRewards - rewardsToDistribute,
             remainingSeconds: last.remainingSeconds - elapsedSeconds,
-            rewardsPerStaked: last.rewardsPerStaked + rewardsPerStaked
+            rewardsPerStaked: last.rewardsPerStaked + rewardsPerStaked,
+            timestamp: block.timestamp
         });
     }
 
@@ -311,7 +345,7 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
             rewardsPerStaked > stake.rewardsPerStaked ? rewardsPerStaked - stake.rewardsPerStaked : 0;
 
         uint256 numerator = stake.amount * stakingTokenScale * rewardsPerStakedDiff;
-        uint256 denominator = rewardsTokenScale * maxSeconds * precision;
+        uint256 denominator = rewardsTokenScale * precision;
 
         return stake.earned + (numerator / denominator);
     }
@@ -321,7 +355,6 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
      */
     function _distributeRewards() private {
         last = _currentDistribution();
-        updatedAt = block.timestamp;
     }
 
     /**
