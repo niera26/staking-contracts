@@ -181,13 +181,10 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
         if (amount == 0) revert ZeroAmount();
         if (duration == 0) revert ZeroDuration();
 
-        _distributeRewards();
-
         last.remainingRewards += amount;
         last.remainingSeconds += duration;
 
         _transferRewardsIn(msg.sender, amount);
-
         emit AddRewards(msg.sender, amount, duration);
     }
 
@@ -195,19 +192,15 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
      * Transfers back all remaining rewards to operator and end distribution.
      */
     function removeRewards() external onlyRole(OPERATOR_ROLE) {
-        _distributeRewards();
-
         uint256 amount = last.remainingRewards;
 
+        last.remainingRewards = 0;
+        last.remainingSeconds = 0;
+
         if (amount > 0) {
-            last.remainingRewards = 0;
-
             _transferRewardsOut(msg.sender, amount);
-
             emit RemoveRewards(msg.sender, amount);
         }
-
-        last.remainingSeconds = 0;
     }
 
     /**
@@ -306,17 +299,10 @@ contract ERC20StakingPool is IERC20StakingPool, AccessControlDefaultAdminRules, 
     }
 
     /**
-     * Distribute rewards of the pool until the current timestamp.
-     */
-    function _distributeRewards() private {
-        last = _currentDistribution();
-    }
-
-    /**
-     * Distribute rewards until current timestamp and earn rewards of the given stake.
+     * Distribute and earn rewards of the given stake.
      */
     function _distributeAndEarnRewards(Stake storage stake) private {
-        _distributeRewards();
+        last = _currentDistribution();
 
         uint256 earned = _earned(stake, last.rewardsPerStaked);
 

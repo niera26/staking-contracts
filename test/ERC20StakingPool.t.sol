@@ -394,14 +394,14 @@ contract ERC20StakingPoolTest is ERC20StakingPoolBaseTest {
 
         assertEq(poolContract.remainingRewards(), 0);
         assertEq(poolContract.remainingSeconds(), 0);
-        assertEq(poolContract.pendingRewards(holder), 500);
+        assertEq(poolContract.pendingRewards(holder), 0);
         assertEq(poolContract.remainingRewards(holder), 0);
 
         claim(holder);
 
         assertEq(poolContract.pendingRewards(holder), 0);
         assertEq(poolContract.remainingRewards(holder), 0);
-        assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance + 500);
+        assertEq(rewardsToken.balanceOf(holder), holderOriginalBalance);
     }
 
     function testReturnsTheFullAmountWhenNoStake() public {
